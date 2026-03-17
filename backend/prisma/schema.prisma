@@ -1,0 +1,248 @@
+// Prisma schema for PostgreSQL database
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  phone     String
+  role      Role     @default(CUSTOMER)
+  events    Event[]
+  cartItems CartItem[]
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@map("users")
+}
+
+model Event {
+  id           String      @id @default(uuid())
+  userId       String
+  templateId   String?
+  name         String
+  type         String
+  date         DateTime
+  time         String
+  venue        String
+  venueBooked  String?
+  notes        String?
+  status       EventStatus @default(DRAFT)
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template     Template?   @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  tasks        EventTask[]
+  cartItems    CartItem[]
+  orders       Order[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([templateId])
+  @@map("events")
+}
+
+model EventTask {
+  id          String       @id @default(uuid())
+  eventId     String
+  title       String
+  category    TaskCategory
+  isCompleted Boolean      @default(false)
+  completedAt DateTime?
+  notes       String?
+  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([eventId])
+  @@map("event_tasks")
+}
+
+model Template {
+  id          String         @id @default(uuid())
+  slug        String         @unique
+  name        String
+  emoji       String?
+  description String
+  isActive    Boolean        @default(true)
+  steps       TemplateStep[]
+  events      Event[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("templates")
+}
+
+model TemplateStep {
+  id         String       @id @default(uuid())
+  templateId String
+  title      String
+  category   TaskCategory
+  sortOrder  Int
+  template   Template     @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([templateId])
+  @@unique([templateId, sortOrder])
+  @@map("template_steps")
+}
+
+model Product {
+  id           String          @id @default(uuid())
+  sku          String          @unique
+  name         String
+  description  String?
+  category     ProductCategory
+  imageUrl     String?
+  venueAddress String?
+  price        Decimal         @db.Decimal(10, 2)
+  isActive     Boolean         @default(true)
+  cartItems    CartItem[]
+  orderItems   OrderItem[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([category])
+  @@map("products")
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  eventId   String?
+  quantity  Int      @default(1)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  event     Event?   @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([productId])
+  @@index([eventId])
+  @@unique([userId, productId, eventId])
+  @@map("cart_items")
+}
+
+model Order {
+  id            String       @id @default(uuid())
+  userId        String
+  eventId       String?
+  orderNumber   String       @unique @default(cuid())
+  status        OrderStatus  @default(PENDING_PAYMENT)
+  totalAmount   Decimal      @db.Decimal(10, 2)
+  currency      String       @default("usd")
+  paymentStatus PaymentState @default(PENDING)
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event         Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  items         OrderItem[]
+  payment       Payment?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([eventId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id           String   @id @default(uuid())
+  orderId      String
+  productId    String
+  productName  String
+  unitPrice    Decimal  @db.Decimal(10, 2)
+  quantity     Int
+  categoryName String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model Payment {
+  id             String       @id @default(uuid())
+  orderId         String       @unique
+  provider        String       @default("STRIPE")
+  paymentIntentId String?      @unique
+  clientSecret    String?
+  amount          Decimal      @db.Decimal(10, 2)
+  currency        String       @default("usd")
+  status          PaymentState @default(PENDING)
+  failureReason   String?
+  paidAt          DateTime?
+  order           Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@map("payments")
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum EventStatus {
+  DRAFT
+  PLANNING
+  READY
+  COMPLETED
+  CANCELED
+}
+
+enum TaskCategory {
+  CAKE
+  DECORATIONS
+  FOOD
+  ENTERTAINMENT
+  PHOTOGRAPHY
+  GIFTS
+  VENUE
+  FLOWERS
+  CELEBRATION_DINNER
+  GAMES
+  PARTY_FAVORS
+  GAMES_AND_ACTIVITIES
+}
+
+enum ProductCategory {
+  CAKES
+  DECORATIONS
+  FOOD
+  GIFTS
+  PHOTOGRAPHY
+  ENTERTAINMENT
+  VENUE
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  PROCESSING
+  COMPLETED
+  CANCELED
+}
+
+enum PaymentState {
+  PENDING
+  REQUIRES_ACTION
+  SUCCEEDED
+  FAILED
+  CANCELED
+  REFUNDED
+}
