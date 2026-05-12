@@ -1,6 +1,6 @@
 import { ShoppingCart, User, Home, Calendar, Store, LogOut, Menu, X, Sparkles, BarChart3, Package, ShoppingCart as Orders, LayoutTemplate, Bell } from 'lucide-react';
 import { AppScreen, CartItem, User as UserType } from '@/App';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface NavigationProps {
   currentScreen: AppScreen;
@@ -15,7 +15,20 @@ interface NavigationProps {
 export function Navigation({ currentScreen, user, cart, onNavigate, onLogout, adminTab, onAdminTabChange }: NavigationProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  if (currentScreen === 'welcome' || currentScreen === 'login') {
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mobileMenuOpen]);
+
+  if (currentScreen === 'welcome' || currentScreen === 'login' || currentScreen === 'register') {
     return null;
   }
 
@@ -141,6 +154,7 @@ export function Navigation({ currentScreen, user, cart, onNavigate, onLogout, ad
             {user?.role !== 'admin' && (
               <button
                 onClick={() => onNavigate('cart')}
+                aria-label='Open cart'
                 className='relative p-2 hover:bg-white/10 rounded-lg transition-colors'
               >
                 <ShoppingCart className='w-6 h-6' />
@@ -153,20 +167,30 @@ export function Navigation({ currentScreen, user, cart, onNavigate, onLogout, ad
             )}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={mobileMenuOpen}
               className='p-2 hover:bg-white/10 rounded-lg transition-colors'
             >
               {mobileMenuOpen ? <X className='w-6 h-6' /> : <Menu className='w-6 h-6' />}
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Mobile Menu Dropdown */}
-        {mobileMenuOpen && (
-          <div className='bg-white/10 backdrop-blur-lg border-t border-white/20'>
+      {/* Mobile overlay + dropdown */}
+      {mobileMenuOpen && (
+        <>
+          <button
+            type='button'
+            aria-label='Close menu overlay'
+            onClick={() => setMobileMenuOpen(false)}
+            className='md:hidden fixed inset-0 top-16 bg-black/30 z-40'
+          />
+          <div className='md:hidden fixed top-16 left-0 right-0 bg-white/10 backdrop-blur-lg border-t border-white/20 z-50'>
             <div className='px-4 py-4 space-y-2'>
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = user?.role === 'admin' 
+                const isActive = user?.role === 'admin'
                   ? adminTab === item.tab
                   : currentScreen === item.screen;
                 return (
@@ -180,9 +204,10 @@ export function Navigation({ currentScreen, user, cart, onNavigate, onLogout, ad
                       }
                       setMobileMenuOpen(false);
                     }}
+                    aria-current={isActive ? 'page' : undefined}
                     className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
-                      isActive 
-                        ? 'bg-white/20 font-semibold' 
+                      isActive
+                        ? 'bg-white/20 font-semibold'
                         : 'hover:bg-white/10'
                     }`}
                   >
@@ -209,8 +234,8 @@ export function Navigation({ currentScreen, user, cart, onNavigate, onLogout, ad
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </>
+      )}
     </>
   );
 }

@@ -15,6 +15,8 @@ import { CheckoutScreen } from '@/components/checkout-screen';
 import { ConfirmationScreen } from '@/components/confirmation-screen';
 import { AdminDashboard } from '@/components/admin-dashboard';
 import { Navigation } from '@/components/navigation';
+import { toast } from '@/hooks/use-toast';
+import { Spinner } from '@/components/ui/spinner';
 
 export type AppScreen = 
   | 'welcome'
@@ -136,11 +138,21 @@ export default function App() {
     setLoginLoading(true);
     try {
       await login(email, password, role);
+      toast({
+        title: 'Signed in',
+        description: 'Welcome back!',
+      });
       handleNavigate(role === 'admin' ? 'admin-dashboard' : 'dashboard');
     } catch (err: unknown) {
       setLoginError(
         err instanceof Error ? err.message : 'Login failed. Please try again.'
       );
+      toast({
+        variant: 'destructive',
+        title: 'Login failed',
+        description:
+          err instanceof Error ? err.message : 'Please try again.',
+      });
     } finally {
       setLoginLoading(false);
     }
@@ -156,11 +168,21 @@ export default function App() {
     setRegisterLoading(true);
     try {
       await register(name, email, password, phone);
+      toast({
+        title: 'Account created',
+        description: 'You are now signed in.',
+      });
       handleNavigate('dashboard');
     } catch (err: unknown) {
       setRegisterError(
         err instanceof Error ? err.message : 'Registration failed. Please try again.'
       );
+      toast({
+        variant: 'destructive',
+        title: 'Registration failed',
+        description:
+          err instanceof Error ? err.message : 'Please try again.',
+      });
     } finally {
       setRegisterLoading(false);
     }
@@ -339,10 +361,13 @@ export default function App() {
   // Show full-screen spinner while restoring session from stored token
   if (authLoading) {
     return (
-      <div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50'>
-        <div className='text-center space-y-4'>
-          <div className='w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto' />
-          <p className='text-gray-500 font-medium'>Loading CelebrateSmart…</p>
+      <div className='min-h-screen flex items-center justify-center bg-background'>
+        <div className='text-center space-y-3'>
+          <div className='inline-flex items-center justify-center gap-2'>
+            <Spinner className='size-5' />
+            <span className='font-medium'>Loading CelebrateSmart…</span>
+          </div>
+          <p className='text-sm text-muted-foreground'>Restoring your session</p>
         </div>
       </div>
     );
@@ -351,7 +376,7 @@ export default function App() {
   const showNavigation = currentScreen !== 'welcome' && currentScreen !== 'login' && currentScreen !== 'register';
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50'>
+    <div className='min-h-screen bg-background text-foreground'>
       {showNavigation && (
         <Navigation 
           currentScreen={currentScreen}

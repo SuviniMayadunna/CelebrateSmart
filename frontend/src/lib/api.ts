@@ -43,16 +43,101 @@ export interface UserResponse {
   };
 }
 
+// Admin API types
+export type OrderStatus = 'PENDING_PAYMENT' | 'PAID' | 'PROCESSING' | 'COMPLETED' | 'CANCELED';
+export type PaymentState =
+  | 'PENDING'
+  | 'REQUIRES_ACTION'
+  | 'SUCCEEDED'
+  | 'FAILED'
+  | 'CANCELED'
+  | 'REFUNDED';
+
+export interface AdminStatsResponse {
+  success: boolean;
+  data: {
+    totalCustomers: number;
+    totalOrders: number;
+    totalRevenue: number | string;
+    pendingOrders: number;
+  };
+}
+
+export interface AdminOrder {
+  id: string;
+  orderNumber: string;
+  customer: string;
+  totalAmount: number | string;
+  status: OrderStatus;
+  paymentStatus: PaymentState;
+  date: string;
+}
+
+export interface AdminOrdersResponse {
+  success: boolean;
+  data: {
+    orders: AdminOrder[];
+  };
+}
+
+export type ProductCategory =
+  | 'CAKES'
+  | 'DECORATIONS'
+  | 'FOOD'
+  | 'GIFTS'
+  | 'PHOTOGRAPHY'
+  | 'ENTERTAINMENT'
+  | 'VENUE';
+
+export interface AdminProduct {
+  id: string;
+  sku: string;
+  name: string;
+  category: ProductCategory;
+  price: number | string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface AdminProductsResponse {
+  success: boolean;
+  data: {
+    products: AdminProduct[];
+  };
+}
+
+export interface AdminTemplate {
+  id: string;
+  slug: string;
+  name: string;
+  emoji: string | null;
+  isActive: boolean;
+  steps: number;
+  createdAt: string;
+}
+
+export interface AdminTemplatesResponse {
+  success: boolean;
+  data: {
+    templates: AdminTemplate[];
+  };
+}
+
 // Token management
 export const setAuthToken = (token: string) => {
-  sessionStorage.setItem('token', token);
+  // Persist across tabs/windows for better UX.
+  // Note: storing tokens in localStorage has security tradeoffs; acceptable for this demo app.
+  localStorage.setItem('token', token);
+  // Back-compat: clear any old session token.
+  sessionStorage.removeItem('token');
 };
 
 export const getAuthToken = (): string | null => {
-  return sessionStorage.getItem('token');
+  return localStorage.getItem('token') || sessionStorage.getItem('token');
 };
 
 export const removeAuthToken = () => {
+  localStorage.removeItem('token');
   sessionStorage.removeItem('token');
 };
 
@@ -136,5 +221,52 @@ export const authAPI = {
    */
   logout: () => {
     removeAuthToken();
+  },
+};
+
+// Admin API endpoints (requires admin role)
+export const adminAPI = {
+  getStats: async (): Promise<AdminStatsResponse> => {
+    return apiRequest<AdminStatsResponse>('/admin/stats', { method: 'GET' });
+  },
+
+  listOrders: async (limit = 20): Promise<AdminOrdersResponse> => {
+    return apiRequest<AdminOrdersResponse>(`/admin/orders?limit=${limit}`, { method: 'GET' });
+  },
+
+  updateOrderStatus: async (orderId: string, status: OrderStatus): Promise<{ success: boolean; data: { order: AdminOrder } }> => {
+    return apiRequest(`/admin/orders/${orderId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  listProducts: async (limit = 100): Promise<AdminProductsResponse> => {
+    return apiRequest<AdminProductsResponse>(`/admin/products?limit=${limit}`, { method: 'GET' });
+  },
+
+  setProductActive: async (productId: string, isActive: boolean): Promise<{ success: boolean; data: { product: AdminProduct } }> => {
+    return apiRequest(`/admin/products/${productId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isActive }),
+    });
+  },
+
+  listTemplates: async (limit = 100): Promise<AdminTemplatesResponse> => {
+    return apiRequest<AdminTemplatesResponse>(`/admin/templates?limit=${limit}`, { method: 'GET' });
+  },
+
+  setTemplateActive: async (templateId: string, isActive: boolean): Promise<{ success: boolean; data: { template: AdminTemplate } }> => {
+    return apiRequest(`/admin/templates/${templateId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isActive }),
+    });
+  },
+
+  sendNotification: async (payload: { recipientType: string; title: string; content: string }): Promise<{ success: boolean; message: string }> => {
+    return apiRequest('/admin/notifications', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   },
 };

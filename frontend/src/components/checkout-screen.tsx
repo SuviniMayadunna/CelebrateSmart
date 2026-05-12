@@ -1,7 +1,35 @@
-import React from "react"
-
 import { useState } from 'react';
 import { AppScreen, CartItem, EventData } from '@/App';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
+import { CreditCard, Mail, MapPin, Phone, ShoppingBag, User } from 'lucide-react';
 
 interface CheckoutScreenProps {
   cart: CartItem[];
@@ -10,30 +38,40 @@ interface CheckoutScreenProps {
   onComplete: () => void;
 }
 
-export function CheckoutScreen({ cart, event, onNavigate, onComplete }: CheckoutScreenProps) {
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    address: '',
-    cardNumber: '',
-    expiryDate: '',
-    cvv: '',
-  });
+const checkoutSchema = z.object({
+  fullName: z.string().trim().min(1, 'Full name is required'),
+  email: z.string().trim().email('Enter a valid email'),
+  phone: z.string().trim().min(6, 'Phone number is required'),
+  address: z.string().trim().min(1, 'Delivery address is required'),
+  cardNumber: z.string().trim().min(12, 'Card number is required'),
+  expiryDate: z.string().trim().min(4, 'Expiry date is required'),
+  cvv: z.string().trim().min(3, 'CVV is required'),
+});
 
+type CheckoutFormValues = z.infer<typeof checkoutSchema>;
+
+export function CheckoutScreen({ cart, event, onNavigate, onComplete }: CheckoutScreenProps) {
   const [loading, setLoading] = useState(false);
+
+  const form = useForm<CheckoutFormValues>({
+    resolver: zodResolver(checkoutSchema),
+    defaultValues: {
+      fullName: '',
+      email: '',
+      phone: '',
+      address: '',
+      cardNumber: '',
+      expiryDate: '',
+      cvv: '',
+    },
+    mode: 'onTouched',
+  });
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const tax = subtotal * 0.1;
   const total = subtotal + tax;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = async (_values: CheckoutFormValues) => {
     setLoading(true);
     // Simulate payment processing
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -44,135 +82,236 @@ export function CheckoutScreen({ cart, event, onNavigate, onComplete }: Checkout
   return (
     <div className='min-h-screen bg-background'>
       <main className='max-w-7xl mx-auto px-4 py-8'>
+        {cart.length === 0 ? (
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant='icon'>
+                <ShoppingBag />
+              </EmptyMedia>
+              <EmptyTitle>Nothing to check out</EmptyTitle>
+              <EmptyDescription>Your cart is empty.</EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button onClick={() => onNavigate('shop')} className='w-full font-semibold'>
+                Continue shopping
+              </Button>
+            </EmptyContent>
+          </Empty>
+        ) : (
         <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
           <div className='lg:col-span-2'>
-            <form onSubmit={handleSubmit} className='space-y-8'>
-              {/* Contact Information */}
-              <div className='bg-card border border-border rounded-lg p-6'>
-                <h2 className='font-bold text-xl mb-6'>Contact Information</h2>
-                <div className='space-y-4'>
-                  <div>
-                    <label className='block text-sm font-semibold mb-2'>Full Name *</label>
-                    <input
-                      type='text'
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(submit)} className='space-y-6'>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Contact Information</CardTitle>
+                    <CardDescription>Where should we send updates?</CardDescription>
+                  </CardHeader>
+                  <CardContent className='space-y-4'>
+                    <FormField
+                      control={form.control}
                       name='fullName'
-                      value={formData.fullName}
-                      onChange={handleChange}
-                      required
-                      className='w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Full Name</FormLabel>
+                          <div className='relative'>
+                            <User className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground' />
+                            <FormControl>
+                              <Input
+                                {...field}
+                                disabled={loading}
+                                autoComplete='name'
+                                className='pl-9'
+                              />
+                            </FormControl>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </div>
-                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                    <div>
-                      <label className='block text-sm font-semibold mb-2'>Email *</label>
-                      <input
-                        type='email'
+
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                      <FormField
+                        control={form.control}
                         name='email'
-                        value={formData.email}
-                        onChange={handleChange}
-                        required
-                        className='w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary'
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <div className='relative'>
+                              <Mail className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground' />
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  disabled={loading}
+                                  type='email'
+                                  autoComplete='email'
+                                  className='pl-9'
+                                />
+                              </FormControl>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                    <div>
-                      <label className='block text-sm font-semibold mb-2'>Phone *</label>
-                      <input
-                        type='tel'
+                      <FormField
+                        control={form.control}
                         name='phone'
-                        value={formData.phone}
-                        onChange={handleChange}
-                        required
-                        className='w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary'
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Phone</FormLabel>
+                            <div className='relative'>
+                              <Phone className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground' />
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  disabled={loading}
+                                  type='tel'
+                                  autoComplete='tel'
+                                  className='pl-9'
+                                />
+                              </FormControl>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
                     </div>
-                  </div>
-                  <div>
-                    <label className='block text-sm font-semibold mb-2'>Delivery Address *</label>
-                    <input
-                      type='text'
+
+                    <FormField
+                      control={form.control}
                       name='address'
-                      value={formData.address}
-                      onChange={handleChange}
-                      required
-                      className='w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Delivery Address</FormLabel>
+                          <div className='relative'>
+                            <MapPin className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground' />
+                            <FormControl>
+                              <Input
+                                {...field}
+                                disabled={loading}
+                                autoComplete='street-address'
+                                className='pl-9'
+                              />
+                            </FormControl>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </div>
-                </div>
-              </div>
+                  </CardContent>
+                </Card>
 
-              {/* Payment Information */}
-              <div className='bg-card border border-border rounded-lg p-6'>
-                <h2 className='font-bold text-xl mb-6'>Payment Information</h2>
-                <div className='space-y-4'>
-                  <div>
-                    <label className='block text-sm font-semibold mb-2'>Card Number *</label>
-                    <input
-                      type='text'
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Payment Information</CardTitle>
+                    <CardDescription>Demo checkout — no real payment is processed.</CardDescription>
+                  </CardHeader>
+                  <CardContent className='space-y-4'>
+                    <FormField
+                      control={form.control}
                       name='cardNumber'
-                      value={formData.cardNumber}
-                      onChange={handleChange}
-                      placeholder='1234 5678 9012 3456'
-                      required
-                      className='w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Card Number</FormLabel>
+                          <div className='relative'>
+                            <CreditCard className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground' />
+                            <FormControl>
+                              <Input
+                                {...field}
+                                disabled={loading}
+                                placeholder='1234 5678 9012 3456'
+                                autoComplete='cc-number'
+                                className='pl-9'
+                              />
+                            </FormControl>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </div>
-                  <div className='grid grid-cols-2 gap-4'>
-                    <div>
-                      <label className='block text-sm font-semibold mb-2'>Expiry Date *</label>
-                      <input
-                        type='text'
-                        name='expiryDate'
-                        value={formData.expiryDate}
-                        onChange={handleChange}
-                        placeholder='MM/YY'
-                        required
-                        className='w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary'
-                      />
-                    </div>
-                    <div>
-                      <label className='block text-sm font-semibold mb-2'>CVV *</label>
-                      <input
-                        type='text'
-                        name='cvv'
-                        value={formData.cvv}
-                        onChange={handleChange}
-                        placeholder='123'
-                        required
-                        className='w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary'
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
 
-              <div className='flex gap-4'>
-                <button
-                  type='button'
-                  onClick={() => onNavigate('cart')}
-                  className='flex-1 py-3 bg-secondary text-secondary-foreground rounded-lg font-semibold hover:bg-secondary/90 transition-colors'
-                >
-                  Back to Cart
-                </button>
-                <button
-                  type='submit'
-                  disabled={loading}
-                  className='flex-1 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50'
-                >
-                  {loading ? 'Processing...' : 'Complete Purchase'}
-                </button>
-              </div>
-            </form>
+                    <div className='grid grid-cols-2 gap-4'>
+                      <FormField
+                        control={form.control}
+                        name='expiryDate'
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Expiry Date</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                disabled={loading}
+                                placeholder='MM/YY'
+                                autoComplete='cc-exp'
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name='cvv'
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>CVV</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                disabled={loading}
+                                placeholder='123'
+                                autoComplete='cc-csc'
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormDescription>
+                      Use any values — this is a simulated payment step.
+                    </FormDescription>
+                  </CardContent>
+                </Card>
+
+                <div className='flex flex-col-reverse sm:flex-row gap-3'>
+                  <Button
+                    type='button'
+                    variant='secondary'
+                    onClick={() => onNavigate('cart')}
+                    className='w-full sm:flex-1 font-semibold'
+                    disabled={loading}
+                    size='lg'
+                  >
+                    Back to Cart
+                  </Button>
+                  <Button
+                    type='submit'
+                    className='w-full sm:flex-1 font-semibold'
+                    disabled={loading}
+                    size='lg'
+                  >
+                    {loading ? 'Processing…' : 'Complete Purchase'}
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </div>
 
           {/* Order Summary */}
           <div>
-            <div className='bg-card border border-border rounded-lg p-6 sticky top-24'>
-              <h2 className='font-bold text-xl mb-6'>Order Summary</h2>
+            <Card className='sticky top-24'>
+              <CardHeader>
+                <CardTitle>Order Summary</CardTitle>
+                <CardDescription>Totals for this purchase.</CardDescription>
+              </CardHeader>
+              <CardContent>
 
               {event && (
                 <div className='pb-6 border-b border-border mb-6'>
                   <p className='text-sm text-muted-foreground mb-1'>Event</p>
-                  <p className='font-semibold'>{event.name}</p>
+                  <p className='font-semibold text-foreground'>{event.name}</p>
                 </div>
               )}
 
@@ -200,9 +339,11 @@ export function CheckoutScreen({ cart, event, onNavigate, onComplete }: Checkout
                 <span className='font-bold'>Total</span>
                 <span className='text-2xl font-bold text-primary'>${total.toFixed(2)}</span>
               </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
+        )}
       </main>
     </div>
   );

@@ -3,7 +3,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { connectDB, disconnectDB } from './config/database';
 import authRoutes from './routes/auth';
-import { authenticate } from './middleware/auth';
+import adminRoutes from './routes/admin';
+import { authenticate, requireAdmin } from './middleware/auth';
 
 // Load environment variables
 dotenv.config();
@@ -59,6 +60,9 @@ app.use((req: Request, res: Response, next) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+
+// Admin routes (requires authentication + admin role)
+app.use('/api/admin', authenticate, requireAdmin, adminRoutes);
 
 // Protected route example (requires authentication)
 app.get('/api/protected', authenticate, (req: Request, res: Response) => {

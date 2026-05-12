@@ -1,6 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { AppScreen, CartItem, EventData } from '@/App';
-import { CheckCircle } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Info, ShoppingCart } from 'lucide-react';
 
 const SHOP_PRODUCTS = [
   // Cakes
@@ -40,159 +59,157 @@ interface ShopScreenProps {
 export function ShopScreen({ onAddToCart, event, returnToPlanning, initialCategory }: ShopScreenProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory);
   const [sortBy, setSortBy] = useState<'price-low' | 'price-high' | 'name'>('price-low');
-  const [toast, setToast] = useState<{ show: boolean; message: string; productName: string }>({ 
-    show: false, 
-    message: '', 
-    productName: '' 
-  });
-
-  // Auto-hide toast after 3 seconds
-  useEffect(() => {
-    if (toast.show) {
-      const timer = setTimeout(() => {
-        setToast({ show: false, message: '', productName: '' });
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast.show]);
 
   const handleAddToCart = (item: CartItem) => {
     onAddToCart(item);
-    setToast({ 
-      show: true, 
-      message: 'Added to Cart!', 
-      productName: item.name 
+    toast({
+      title: 'Added to cart',
+      description: item.name,
     });
   };
 
   const categories = [...new Set(SHOP_PRODUCTS.map(p => p.category))];
 
-  let filteredProducts = SHOP_PRODUCTS;
-  if (selectedCategory) {
-    filteredProducts = filteredProducts.filter(p => p.category === selectedCategory);
-  }
+  const filteredProducts = useMemo(() => {
+    let products = SHOP_PRODUCTS;
+    if (selectedCategory) {
+      products = products.filter((p) => p.category === selectedCategory);
+    }
 
-  if (sortBy === 'price-low') {
-    filteredProducts = [...filteredProducts].sort((a, b) => a.price - b.price);
-  } else if (sortBy === 'price-high') {
-    filteredProducts = [...filteredProducts].sort((a, b) => b.price - a.price);
-  } else if (sortBy === 'name') {
-    filteredProducts = [...filteredProducts].sort((a, b) => a.name.localeCompare(b.name));
-  }
+    if (sortBy === 'price-low') {
+      return [...products].sort((a, b) => a.price - b.price);
+    }
+    if (sortBy === 'price-high') {
+      return [...products].sort((a, b) => b.price - a.price);
+    }
+    return [...products].sort((a, b) => a.name.localeCompare(b.name));
+  }, [selectedCategory, sortBy]);
 
   return (
     <div className='min-h-screen bg-background'>
-      {/* Toast Notification */}
-      {toast.show && (
-        <div className='fixed top-4 right-4 z-50 animate-in slide-in-from-top-5 duration-300'>
-          <div className='bg-green-600 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 min-w-[300px]'>
-            <CheckCircle className='w-6 h-6 flex-shrink-0' />
-            <div>
-              <p className='font-bold'>{toast.message}</p>
-              <p className='text-sm text-green-100'>{toast.productName}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       <main className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
         <div className='flex flex-col lg:flex-row gap-8'>
           {/* Sidebar */}
           <div className='w-full lg:w-64 shrink-0'>
-            <div className='bg-card border border-border rounded-lg p-6 sticky top-4'>
-              <h3 className='font-bold text-lg mb-4'>Categories</h3>
-              <div className='space-y-2'>
-                <button
-                  onClick={() => setSelectedCategory(null)}
-                  className={`block w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                    selectedCategory === null
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-muted'
-                  }`}
-                >
-                  All Items
-                </button>
-                {categories.map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`block w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                      selectedCategory === cat
-                        ? 'bg-primary text-primary-foreground'
-                        : 'hover:bg-muted'
-                    }`}
+            <Card className='sticky top-4'>
+              <CardHeader>
+                <CardTitle>Categories</CardTitle>
+                <CardDescription>Browse by what you need.</CardDescription>
+              </CardHeader>
+              <CardContent className='space-y-4'>
+                <div className='space-y-1'>
+                  <Button
+                    variant={selectedCategory === null ? 'default' : 'ghost'}
+                    onClick={() => setSelectedCategory(null)}
+                    className='w-full justify-start font-semibold'
                   >
-                    {cat}
-                  </button>
-                ))}
-              </div>
+                    All Items
+                  </Button>
+                  {categories.map((cat) => (
+                    <Button
+                      key={cat}
+                      variant={selectedCategory === cat ? 'default' : 'ghost'}
+                      onClick={() => setSelectedCategory(cat)}
+                      className='w-full justify-start font-semibold'
+                    >
+                      {cat}
+                    </Button>
+                  ))}
+                </div>
 
-              <h3 className='font-bold text-lg mt-6 mb-4'>Sort By</h3>
-              <div className='space-y-2'>
-                {(['price-low', 'price-high', 'name'] as const).map(option => (
-                  <label key={option} className='flex items-center gap-2 cursor-pointer'>
-                    <input
-                      type='radio'
-                      checked={sortBy === option}
-                      onChange={() => setSortBy(option)}
-                      className='w-4 h-4'
-                    />
-                    <span className='text-sm capitalize'>{option.replace('-', ' ')}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+                <Separator />
+
+                <div className='space-y-2'>
+                  <p className='text-sm font-semibold text-foreground'>Sort</p>
+                  <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+                    <SelectTrigger className='w-full'>
+                      <SelectValue placeholder='Sort by' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value='price-low'>Price (low → high)</SelectItem>
+                      <SelectItem value='price-high'>Price (high → low)</SelectItem>
+                      <SelectItem value='name'>Name</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Products Grid */}
           <div className='flex-1 min-w-0'>
             {returnToPlanning && event && (
-              <div className='mb-6 p-4 bg-primary/10 border border-primary/30 rounded-lg'>
-                <p className='font-semibold text-primary'>Shopping for: {event.name}</p>
-                <p className='text-sm text-primary/80'>Items added will automatically mark planning tasks as complete</p>
-              </div>
+              <Alert className='mb-6 border-primary/30 bg-primary/5'>
+                <Info />
+                <AlertTitle className='text-primary'>Shopping for: {event.name}</AlertTitle>
+                <AlertDescription>
+                  Items added will automatically mark planning tasks as complete.
+                </AlertDescription>
+              </Alert>
             )}
             <div className='mb-6'>
-              <p className='text-muted-foreground'>Showing {filteredProducts.length} products</p>
+              <div className='flex flex-wrap items-center justify-between gap-2'>
+                <p className='text-muted-foreground'>Showing {filteredProducts.length} products</p>
+                {selectedCategory && (
+                  <Badge variant='outline'>{selectedCategory}</Badge>
+                )}
+              </div>
             </div>
 
             <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6'>
               {filteredProducts.map(product => (
-                <div key={product.id} className='bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow'>
-                  <div className='bg-muted p-8 text-5xl flex items-center justify-center h-40'>
-                    {product.image}
+                <Card key={product.id} className='overflow-hidden transition-shadow hover:shadow-md'>
+                  <div className='bg-muted/50 p-8 text-5xl flex items-center justify-center h-40'>
+                    {product.image || '🛍️'}
                   </div>
-                  <div className='p-6'>
-                    <p className='text-xs text-muted-foreground uppercase mb-1'>{product.category}</p>
-                    <h3 className='font-bold text-lg mb-3'>{product.name}</h3>
+                  <CardContent className='p-6 space-y-3'>
+                    <div className='flex items-start justify-between gap-3'>
+                      <div className='min-w-0'>
+                        <Badge variant='outline' className='mb-2'>
+                          {product.category}
+                        </Badge>
+                        <h3 className='font-bold text-lg text-foreground leading-tight'>
+                          {product.name}
+                        </h3>
+                      </div>
+                      <span className='text-xl font-bold text-primary whitespace-nowrap'>
+                        ${product.price}
+                      </span>
+                    </div>
+
                     {(product as any).description && (
-                      <p className='text-sm text-muted-foreground mb-3'>{(product as any).description}</p>
+                      <p className='text-sm text-muted-foreground'>
+                        {(product as any).description}
+                      </p>
                     )}
                     {(product as any).venueAddress && (
-                      <p className='text-xs text-muted-foreground mb-3 flex items-start gap-1'>
-                        <span>Address:</span>
+                      <p className='text-xs text-muted-foreground'>
+                        <span className='font-medium text-foreground'>Address:</span>{' '}
                         <span>{(product as any).venueAddress}</span>
                       </p>
                     )}
-                    <div className='flex items-center justify-between'>
-                      <span className='text-2xl font-bold text-primary'>${product.price}</span>
-                      <button
-                        onClick={() => handleAddToCart({
+
+                    <Button
+                      onClick={() =>
+                        handleAddToCart({
                           id: product.id,
                           name: product.name,
                           price: product.price,
                           quantity: 1,
                           category: product.category,
                           image: product.image,
-                          ...(product as any).venueAddress && { venueAddress: (product as any).venueAddress }
-                        } as any)}
-                        className='px-4 py-2 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors'
-                      >
-                        Add to Cart
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                          ...(product as any).venueAddress && {
+                            venueAddress: (product as any).venueAddress,
+                          },
+                        } as any)
+                      }
+                      className='w-full font-semibold'
+                    >
+                      <ShoppingCart className='size-4' />
+                      Add to Cart
+                    </Button>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </div>

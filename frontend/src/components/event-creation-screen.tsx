@@ -1,7 +1,27 @@
-import React from "react"
-
-import { useState } from 'react';
 import { AppScreen, EventData } from '@/App';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Calendar, Clock, MapPin, StickyNote, Sparkles } from 'lucide-react';
 
 interface EventCreationScreenProps {
   onNavigate: (screen: AppScreen) => void;
@@ -9,134 +29,199 @@ interface EventCreationScreenProps {
   preselectedType?: string | null;
 }
 
+const createEventSchema = z.object({
+  name: z.string().trim().min(1, 'Event name is required'),
+  type: z.string().trim().min(1, 'Event type is required'),
+  date: z.string().trim().min(1, 'Date is required'),
+  time: z.string().trim().min(1, 'Time is required'),
+  venue: z.string().trim().optional().default(''),
+  notes: z.string().trim().optional().default(''),
+});
+
+type CreateEventFormValues = z.infer<typeof createEventSchema>;
+
 export function EventCreationScreen({ onNavigate, onCreate, preselectedType }: EventCreationScreenProps) {
   const today = new Date().toISOString().split('T')[0];
-  
-  const [formData, setFormData] = useState({
-    name: '',
-    type: preselectedType || 'Birthday',
-    date: '',
-    time: '18:00',
-    venue: '',
-    notes: '',
+
+  const form = useForm<CreateEventFormValues>({
+    resolver: zodResolver(createEventSchema),
+    defaultValues: {
+      name: '',
+      type: preselectedType || 'Birthday',
+      date: '',
+      time: '18:00',
+      venue: '',
+      notes: '',
+    },
+    mode: 'onTouched',
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData.name && formData.date) {
-      onCreate({
-        ...formData,
-        venue: formData.venue || 'To be determined'
-      });
-    }
+  const submit = (values: CreateEventFormValues) => {
+    onCreate({
+      ...values,
+      venue: values.venue?.trim() ? values.venue.trim() : 'To be determined',
+      notes: values.notes?.trim() ?? '',
+    });
   };
 
   return (
     <div className='min-h-screen bg-background'>
       <main className='max-w-3xl mx-auto px-4 py-8'>
-        <form onSubmit={handleSubmit} className='space-y-6 bg-card border border-border rounded-lg p-8'>
-          <div className='space-y-2'>
-            <label className='block font-semibold'>Event Name *</label>
-            <input
-              type='text'
-              name='name'
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="e.g., Sarah's Birthday Party"
-              className='w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary'
-              required
-            />
-          </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Create Event</CardTitle>
+            <CardDescription>Fill in the basics — you can plan the details next.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(submit)} className='space-y-6'>
+                <FormField
+                  control={form.control}
+                  name='name'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Event Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g., Sarah's Birthday Party"
+                          autoComplete='off'
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-            <div className='space-y-2'>
-              <label className='block font-semibold'>Event Type *</label>
-              <input
-                type='text'
-                name='type'
-                value={formData.type}
-                readOnly
-                className='w-full px-4 py-3 rounded-lg border border-border bg-muted text-muted-foreground cursor-not-allowed font-semibold'
-                title='Event type cannot be changed after template selection'
-              />
-              <p className='text-xs text-muted-foreground'>Selected from template - cannot be changed</p>
-            </div>
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                  <FormField
+                    control={form.control}
+                    name='type'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Event Type</FormLabel>
+                        <FormControl>
+                          <div className='relative'>
+                            <Input
+                              {...field}
+                              readOnly
+                              className='bg-muted text-muted-foreground cursor-not-allowed pr-9'
+                              title='Event type cannot be changed after template selection'
+                            />
+                            <Sparkles className='absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground' />
+                          </div>
+                        </FormControl>
+                        <FormDescription>Selected from template — cannot be changed.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-            <div className='space-y-2'>
-              <label className='block font-semibold'>Date *</label>
-              <input
-                type='date'
-                name='date'
-                value={formData.date}
-                onChange={handleChange}
-                min={today}
-                className='w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary'
-                required
-              />
-              <p className='text-xs text-muted-foreground'>Past dates cannot be selected</p>
-            </div>
-          </div>
+                  <FormField
+                    control={form.control}
+                    name='date'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date</FormLabel>
+                        <div className='relative'>
+                          <Calendar className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground' />
+                          <FormControl>
+                            <Input
+                              type='date'
+                              min={today}
+                              className='pl-9'
+                              {...field}
+                            />
+                          </FormControl>
+                        </div>
+                        <FormDescription>Past dates cannot be selected.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-            <div className='space-y-2'>
-              <label className='block font-semibold'>Time *</label>
-              <input
-                type='time'
-                name='time'
-                value={formData.time}
-                onChange={handleChange}
-                className='w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary'
-                required
-              />
-            </div>
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                  <FormField
+                    control={form.control}
+                    name='time'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Time</FormLabel>
+                        <div className='relative'>
+                          <Clock className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground' />
+                          <FormControl>
+                            <Input type='time' className='pl-9' {...field} />
+                          </FormControl>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-            <div className='space-y-2'>
-              <label className='block font-semibold'>Venue</label>
-              <input
-                type='text'
-                name='venue'
-                value={formData.venue}
-                onChange={handleChange}
-                placeholder='e.g., Central Park Pavilion (or select company venue later)'
-                className='w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary'
-              />
-              <p className='text-xs text-muted-foreground'>Leave blank to select company venue options later</p>
-            </div>
-          </div>
+                  <FormField
+                    control={form.control}
+                    name='venue'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Venue</FormLabel>
+                        <div className='relative'>
+                          <MapPin className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground' />
+                          <FormControl>
+                            <Input
+                              placeholder='e.g., Central Park Pavilion (or select later)'
+                              className='pl-9'
+                              autoComplete='off'
+                              {...field}
+                            />
+                          </FormControl>
+                        </div>
+                        <FormDescription>Leave blank to choose options later.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-          <div className='space-y-2'>
-            <label className='block font-semibold'>Notes</label>
-            <textarea
-              name='notes'
-              value={formData.notes}
-              onChange={handleChange}
-              placeholder='Any additional notes about your event...'
-              rows={4}
-              className='w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary'
-            />
-          </div>
+                <FormField
+                  control={form.control}
+                  name='notes'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes</FormLabel>
+                      <div className='relative'>
+                        <StickyNote className='absolute left-3 top-3 size-4 text-muted-foreground' />
+                        <FormControl>
+                          <Textarea
+                            rows={4}
+                            className='pl-9'
+                            placeholder='Any additional notes about your event…'
+                            {...field}
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-          <div className='flex gap-4'>
-            <button
-              type='submit'
-              className='flex-1 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors'
-            >
-              Create Event
-            </button>
-            <button
-              type='button'
-              onClick={() => onNavigate('event-templates')}
-              className='flex-1 py-3 bg-secondary text-secondary-foreground rounded-lg font-semibold hover:bg-secondary/90 transition-colors'
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
+                <div className='flex flex-col-reverse sm:flex-row gap-3'>
+                  <Button
+                    type='button'
+                    variant='secondary'
+                    onClick={() => onNavigate('event-templates')}
+                    className='w-full sm:flex-1 font-bold'
+                  >
+                    Cancel
+                  </Button>
+                  <Button type='submit' className='w-full sm:flex-1 font-bold'>
+                    Create Event
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

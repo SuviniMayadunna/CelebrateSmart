@@ -1,5 +1,14 @@
 import { AppScreen, EventData } from '@/App';
 import { Calendar, Clock, MapPin, Plus, CheckCircle } from 'lucide-react';
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
+import { Button } from '@/components/ui/button';
 
 interface MyEventsScreenProps {
   events: EventData[];
@@ -26,31 +35,32 @@ export function MyEventsScreen({ events, onNavigate }: MyEventsScreenProps) {
           {/* Header */}
           <div className='flex items-center justify-between'>
             <div>
-              <h1 className='text-4xl font-black text-gray-800 mb-2'>My Events</h1>
-              <p className='text-gray-600 text-lg'>Manage your celebrations</p>
+              <h1 className='text-4xl font-black text-foreground mb-2'>My Events</h1>
+              <p className='text-muted-foreground text-lg'>Manage your celebrations</p>
             </div>
-            <button
-              onClick={() => onNavigate('event-templates')}
-              className='inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-xl font-bold hover:scale-105 transition-all shadow-lg'
-            >
+            <Button onClick={() => onNavigate('event-templates')} className='font-bold'>
               <Plus className='w-5 h-5' />
               <span>New Event</span>
-            </button>
+            </Button>
           </div>
 
           {/* Events Grid */}
           {events.length === 0 ? (
-            <div className='text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-300'>
-              <h3 className='text-xl font-bold text-gray-800 mb-2'>No events yet</h3>
-              <p className='text-gray-600 mb-6'>Start planning your first celebration!</p>
-              <button
-                onClick={() => onNavigate('event-templates')}
-                className='inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-xl font-bold hover:scale-105 transition-all'
-              >
-                <Plus className='w-5 h-5' />
-                <span>Create Your First Event</span>
-              </button>
-            </div>
+            <Empty className='bg-card border border-dashed'>
+              <EmptyHeader>
+                <EmptyMedia variant='icon'>
+                  <Calendar className='size-5' />
+                </EmptyMedia>
+                <EmptyTitle>No events yet</EmptyTitle>
+                <EmptyDescription>Start planning your first celebration!</EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button onClick={() => onNavigate('event-templates')} className='font-bold'>
+                  <Plus className='w-5 h-5' />
+                  <span>Create Your First Event</span>
+                </Button>
+              </EmptyContent>
+            </Empty>
           ) : (
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
               {events.map((event) => {
@@ -58,19 +68,19 @@ export function MyEventsScreen({ events, onNavigate }: MyEventsScreenProps) {
                 return (
                   <div 
                     key={event.id} 
-                    className={`group bg-white rounded-2xl p-6 hover:shadow-2xl transition-all cursor-pointer border-2 ${
+                    className={`group bg-card rounded-2xl p-6 hover:shadow-lg transition-all cursor-pointer border ${
                       isCompleted 
                         ? 'border-green-300 hover:border-green-500' 
-                        : 'border-gray-100 hover:border-primary/30'
+                        : 'border-border hover:border-primary/30'
                     }`}
                     onClick={() => handleEventClick(event)}
                   >
                   <div className='flex items-start justify-between mb-4'>
                     <div className='flex-1'>
-                      <h3 className='text-xl font-bold text-gray-800 mb-1 group-hover:text-primary transition-colors'>
+                      <h3 className='text-xl font-bold text-foreground mb-1 group-hover:text-primary transition-colors'>
                         {event.name}
                       </h3>
-                      <p className='text-sm text-gray-500 capitalize font-medium'>{event.type}</p>
+                      <p className='text-sm text-muted-foreground capitalize font-medium'>{event.type}</p>
                     </div>
                     <div className='w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center text-white text-xl'>
                       
@@ -78,15 +88,15 @@ export function MyEventsScreen({ events, onNavigate }: MyEventsScreenProps) {
                   </div>
                   
                   <div className='space-y-2 mb-4'>
-                    <div className='flex items-center space-x-2 text-gray-600'>
+                    <div className='flex items-center space-x-2 text-muted-foreground'>
                       <Calendar className='w-4 h-4' />
                       <span className='text-sm'>{event.date}</span>
                     </div>
-                    <div className='flex items-center space-x-2 text-gray-600'>
+                    <div className='flex items-center space-x-2 text-muted-foreground'>
                       <Clock className='w-4 h-4' />
                       <span className='text-sm'>{event.time}</span>
                     </div>
-                    <div className='flex items-center space-x-2 text-gray-600'>
+                    <div className='flex items-center space-x-2 text-muted-foreground'>
                       <MapPin className='w-4 h-4' />
                       <span className='text-sm'>{event.venue}</span>
                     </div>
@@ -94,7 +104,7 @@ export function MyEventsScreen({ events, onNavigate }: MyEventsScreenProps) {
                   
                   <div className='pt-4 border-t border-gray-100'>
                     <div className='flex items-center justify-between'>
-                      <span className='text-sm text-gray-600'>
+                      <span className='text-sm text-muted-foreground'>
                         {isCompleted ? 'Status' : 'Progress'}
                       </span>
                       <span className={`text-sm font-bold ${

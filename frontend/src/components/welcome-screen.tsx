@@ -1,5 +1,6 @@
 import { AppScreen } from '@/App';
 import { Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface WelcomeScreenProps {
   onNavigate: (screen: AppScreen) => void;
@@ -39,18 +40,21 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
 
             {/* CTA Buttons */}
             <div className='flex flex-col sm:flex-row gap-4 justify-center pt-8'>
-              <button
+              <Button
                 onClick={() => onNavigate('login')}
-                className='px-10 py-5 bg-white text-primary rounded-2xl font-bold hover:scale-105 transition-all shadow-2xl text-lg'
+                size='lg'
+                className='h-12 px-10 rounded-2xl font-bold text-base shadow-2xl text-primary bg-white hover:bg-white/90'
               >
                 Login
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => onNavigate('register')}
-                className='px-10 py-5 bg-primary/20 backdrop-blur-sm text-white border-2 border-white/30 rounded-2xl font-bold hover:bg-primary/30 transition-all text-lg'
+                size='lg'
+                variant='outline'
+                className='h-12 px-10 rounded-2xl font-bold text-base bg-white/10 text-white border-white/30 hover:bg-white/20 hover:text-white'
               >
                 Register
-              </button>
+              </Button>
             </div>
           </div>
 

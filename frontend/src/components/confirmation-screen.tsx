@@ -1,6 +1,17 @@
 import { AppScreen, CartItem, EventData } from '@/App';
 import { useState } from 'react';
 import { Download, Printer, Calendar, Clock, MapPin, DollarSign, CheckCircle, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
 
 interface ConfirmationScreenProps {
   onNavigate: (screen: AppScreen) => void;
@@ -403,56 +414,65 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
   };
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-primary/10 to-secondary/10 px-4 py-8'>
+    <div className='min-h-screen bg-background px-4 py-8'>
       <div className='max-w-6xl mx-auto space-y-8'>
         {!showEventPlan ? (
           <>
             {/* Confirmation Success */}
-            <div className='text-center space-y-4'>
-              
-              <h1 className='text-4xl font-bold'>Order Confirmed!</h1>
+            <div className='text-center space-y-3'>
+              <div className='mx-auto size-12 rounded-xl bg-primary/10 flex items-center justify-center'>
+                <CheckCircle className='size-6 text-primary' />
+              </div>
+              <h1 className='text-4xl font-bold text-foreground'>Order Confirmed</h1>
               <p className='text-xl text-muted-foreground'>
-                Your celebration items have been successfully ordered
+                Your celebration items have been successfully ordered.
               </p>
             </div>
 
-            <div className='bg-card border border-border rounded-lg p-8 space-y-6'>
-              <div className='bg-muted rounded-lg p-4 text-center'>
-                <p className='text-sm text-muted-foreground mb-1'>Order ID</p>
-                <p className='text-2xl font-bold'>{orderId}</p>
-              </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Order Summary</CardTitle>
+                <CardDescription>
+                  Reference: <Badge variant='secondary'>{orderId}</Badge>
+                </CardDescription>
+              </CardHeader>
+              <CardContent className='space-y-6'>
 
               {event && (
-                <div className='pb-6 border-b border-border'>
-                  <h2 className='font-bold text-lg mb-4'>Event Details</h2>
-                  <div className='space-y-2 text-sm'>
-                    <div className='flex justify-between'>
-                      <span className='text-muted-foreground'>Event Name</span>
-                      <span className='font-semibold'>{event.name}</span>
+                <div className='space-y-3'>
+                  <p className='font-semibold text-foreground'>Event Details</p>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm'>
+                    <div className='flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2'>
+                      <span className='text-muted-foreground'>Event</span>
+                      <span className='font-semibold text-foreground truncate'>{event.name}</span>
                     </div>
-                    <div className='flex justify-between'>
-                      <span className='text-muted-foreground'>Event Type</span>
-                      <span className='font-semibold capitalize'>{event.type}</span>
+                    <div className='flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2'>
+                      <span className='text-muted-foreground'>Type</span>
+                      <span className='font-semibold text-foreground capitalize'>{event.type}</span>
                     </div>
-                    <div className='flex justify-between'>
+                    <div className='flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2'>
                       <span className='text-muted-foreground'>Date & Time</span>
-                      <span className='font-semibold'>{event.date} at {event.time}</span>
+                      <span className='font-semibold text-foreground'>{event.date} at {event.time}</span>
                     </div>
-                    <div className='flex justify-between'>
+                    <div className='flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2'>
                       <span className='text-muted-foreground'>Venue</span>
-                      <span className='font-semibold'>{event.venue}</span>
+                      <span className='font-semibold text-foreground truncate'>
+                        {event.venueBooked || event.venue}
+                      </span>
                     </div>
                   </div>
                 </div>
               )}
 
-              <div className='pb-6 border-b border-border'>
-                <h2 className='font-bold text-lg mb-4'>Order Items</h2>
+              <Separator />
+
+              <div className='space-y-3'>
+                <p className='font-semibold text-foreground'>Order Items</p>
                 <div className='space-y-3'>
                   {cart.map(item => (
                     <div key={item.id} className='flex justify-between items-center'>
                       <div className='flex items-center gap-3'>
-                        <span className='text-2xl'>{item.image}</span>
+                        <span className='text-2xl'>{item.image || '🛍️'}</span>
                         <div>
                           <p className='font-semibold'>{item.name}</p>
                           <p className='text-xs text-muted-foreground'>Qty: {item.quantity}</p>
@@ -464,7 +484,9 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
                 </div>
               </div>
 
-              <div className='space-y-2 pb-6 border-b border-border'>
+              <Separator />
+
+              <div className='space-y-2'>
                 <div className='flex justify-between text-sm'>
                   <span>Subtotal</span>
                   <span>${subtotal.toFixed(2)}</span>
@@ -480,12 +502,15 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
                 <span className='text-3xl font-bold text-primary'>${total.toFixed(2)}</span>
               </div>
 
-              <div className='bg-primary/10 border border-primary/30 rounded-lg p-4'>
-                <p className='text-sm text-foreground'>
-                  <strong>📧 Confirmation email</strong> has been sent to your registered email address. Check your inbox for order details and tracking information.
-                </p>
-              </div>
-            </div>
+              <Alert className='border-primary/30 bg-primary/5'>
+                <AlertCircle />
+                <AlertTitle>Confirmation email</AlertTitle>
+                <AlertDescription>
+                  Sent to your registered email address with order details.
+                </AlertDescription>
+              </Alert>
+              </CardContent>
+            </Card>
 
             {/* Event Plan CTA */}
             {event && (
@@ -495,28 +520,36 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
                   We've created a comprehensive event plan with timeline, checklist, setup instructions, and more.
                 </p>
                 <div className='flex flex-col sm:flex-row gap-4 justify-center pt-4'>
-                  <button
+                  <Button
                     onClick={() => setShowEventPlan(true)}
-                    className='inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-primary rounded-lg font-bold hover:scale-105 transition-all shadow-lg text-lg'
+                    variant='outline'
+                    size='lg'
+                    className='bg-background text-primary border-background/40 hover:bg-background/90 font-bold'
                   >
                     <CheckCircle className='w-6 h-6' />
                     View Event Plan
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={handleDownloadPlan}
-                    className='inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/20 backdrop-blur text-white rounded-lg font-bold hover:bg-white/30 transition-all border-2 border-white text-lg'
+                    variant='outline'
+                    size='lg'
+                    className='bg-transparent text-white border-white/70 hover:bg-white/10 hover:text-white font-bold'
                   >
                     <Download className='w-6 h-6' />
                     Download Plan
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
 
             <div className='space-y-3'>
-              <div className='bg-accent/10 border border-accent/30 rounded-lg p-4'>
-                <h3 className='font-bold mb-2'>What's Next?</h3>
-                <ul className='space-y-2 text-sm'>
+              <Card>
+                <CardHeader>
+                  <CardTitle>What's Next?</CardTitle>
+                  <CardDescription>Helpful reminders for event day.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className='space-y-2 text-sm text-muted-foreground'>
                   <li className='flex items-start gap-2'>
                     <span>📋</span>
                     <span>Review your professional event plan above</span>
@@ -533,22 +566,26 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
                     <span>📞</span>
                     <span>Contact us if you need any assistance</span>
                   </li>
-                </ul>
-              </div>
+                  </ul>
+                </CardContent>
+              </Card>
 
               <div className='flex flex-col sm:flex-row gap-4'>
-                <button
+                <Button
                   onClick={() => onNavigate('dashboard')}
-                  className='flex-1 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors'
+                  className='flex-1 font-semibold'
+                  size='lg'
                 >
                   Back to Dashboard
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => onNavigate('event-templates')}
-                  className='flex-1 py-3 bg-secondary text-secondary-foreground rounded-lg font-semibold hover:bg-secondary/90 transition-colors'
+                  variant='secondary'
+                  className='flex-1 font-semibold'
+                  size='lg'
                 >
                   Plan Another Event
-                </button>
+                </Button>
               </div>
             </div>
           </>
@@ -556,37 +593,40 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
           <>
             {/* Event Plan View */}
             <div className='space-y-6'>
-              <div className='flex items-center justify-between bg-gradient-to-r from-primary to-secondary text-white rounded-lg p-6'>
+              <div className='flex items-center justify-between bg-gradient-to-r from-primary to-secondary text-primary-foreground rounded-lg p-6'>
                 <div>
                   <h1 className='text-3xl font-bold'>{event?.name} - Event Plan</h1>
                   <p className='text-white/90 mt-1'>Professional Event Planning Document</p>
                 </div>
                 <div className='flex gap-3'>
-                  <button
+                  <Button
                     onClick={handlePrintPlan}
-                    className='inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur text-white rounded-lg font-semibold hover:bg-white/30 transition-all border-2 border-white no-print'
+                    variant='outline'
+                    className='bg-transparent text-white border-white/70 hover:bg-white/10 hover:text-white no-print'
                   >
                     <Printer className='w-5 h-5' />
                     Print
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={handleDownloadPlan}
-                    className='inline-flex items-center gap-2 px-4 py-2 bg-white text-primary rounded-lg font-semibold hover:scale-105 transition-all shadow-lg no-print'
+                    variant='outline'
+                    className='bg-background text-primary border-background/40 hover:bg-background/90 no-print'
                   >
                     <Download className='w-5 h-5' />
                     Download
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => setShowEventPlan(false)}
-                    className='inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur text-white rounded-lg font-semibold hover:bg-white/30 transition-all border-2 border-white no-print'
+                    variant='outline'
+                    className='bg-transparent text-white border-white/70 hover:bg-white/10 hover:text-white no-print'
                   >
                     Back
-                  </button>
+                  </Button>
                 </div>
               </div>
 
               {/* Event Plan Content */}
-              <div className='bg-white rounded-lg shadow-lg p-8 space-y-8'>
+              <div className='bg-card text-card-foreground rounded-lg shadow-sm border p-8 space-y-8'>
                 {/* Event Overview */}
                 <section className='border-b pb-6'>
                   <h2 className='text-2xl font-bold text-primary mb-4 flex items-center gap-2'>
@@ -612,7 +652,7 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
                         <MapPin className='w-5 h-5' />
                         <span className='font-bold'>Venue</span>
                       </div>
-                      <p className='text-lg'>{event?.venue}</p>
+                      <p className='text-lg'>{event?.venueBooked || event?.venue}</p>
                     </div>
                   </div>
                   {event?.notes && (
@@ -703,7 +743,7 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
                       </thead>
                       <tbody>
                         {cart.map((item, idx) => (
-                          <tr key={item.id} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                          <tr key={item.id} className={idx % 2 === 0 ? 'bg-muted/40' : 'bg-background'}>
                             <td className='p-3'>
                               <span className='mr-2'>{item.image}</span>
                               {item.name}
@@ -836,7 +876,7 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
                 </section>
 
                 {/* Footer */}
-                <div className='mt-8 pt-6 border-t-2 border-primary/20 text-center text-gray-600'>
+                <div className='mt-8 pt-6 border-t-2 border-primary/20 text-center text-muted-foreground'>
                   <p className='font-bold text-primary text-lg'>CelebrateSmart Event Planning</p>
                   <p className='text-sm mt-1'>Making your celebrations unforgettable</p>
                   <p className='text-xs mt-2'>Generated on {new Date().toLocaleString()}</p>
@@ -845,18 +885,21 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
 
               {/* Bottom Actions */}
               <div className='flex flex-col sm:flex-row gap-4 no-print'>
-                <button
+                <Button
                   onClick={() => setShowEventPlan(false)}
-                  className='flex-1 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors'
+                  className='flex-1 font-semibold'
+                  size='lg'
                 >
                   Back to Confirmation
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => onNavigate('dashboard')}
-                  className='flex-1 py-3 bg-secondary text-secondary-foreground rounded-lg font-semibold hover:bg-secondary/90 transition-colors'
+                  variant='secondary'
+                  className='flex-1 font-semibold'
+                  size='lg'
                 >
                   Go to Dashboard
-                </button>
+                </Button>
               </div>
             </div>
           </>
@@ -874,11 +917,11 @@ function TimelineItem({ time, title, tasks, highlight = false }: { time: string;
         <Clock className={`w-5 h-5 ${highlight ? 'text-secondary' : 'text-primary'}`} />
         <span className={`font-bold text-lg ${highlight ? 'text-secondary' : 'text-primary'}`}>{time}</span>
       </div>
-      <p className='font-semibold text-gray-800 mb-2'>{title}</p>
-      <ul className='space-y-1 text-sm text-gray-700'>
+      <p className='font-semibold text-foreground mb-2'>{title}</p>
+      <ul className='space-y-1 text-sm text-muted-foreground'>
         {tasks.map((task, idx) => (
           <li key={idx} className='flex items-start gap-2'>
-            <span className='text-gray-400'>•</span>
+            <span className='text-muted-foreground/70'>•</span>
             <span>{task}</span>
           </li>
         ))}
@@ -889,13 +932,13 @@ function TimelineItem({ time, title, tasks, highlight = false }: { time: string;
 
 function ChecklistSection({ title, items, completed = false }: { title: string; items: string[]; completed?: boolean }) {
   return (
-    <div className={`p-4 rounded-lg ${completed ? 'bg-green-50' : 'bg-gray-50'}`}>
-      <h3 className={`font-bold mb-3 ${completed ? 'text-green-900' : 'text-gray-800'}`}>{title}</h3>
+    <div className={`p-4 rounded-lg ${completed ? 'bg-green-50' : 'bg-muted/40'}`}>
+      <h3 className={`font-bold mb-3 ${completed ? 'text-green-900' : 'text-foreground'}`}>{title}</h3>
       <ul className='space-y-2'>
         {items.map((item, idx) => (
           <li key={idx} className='flex items-start gap-3'>
             <CheckCircle className={`w-5 h-5 flex-shrink-0 ${completed ? 'text-green-600' : 'text-gray-400'}`} />
-            <span className={completed ? 'text-green-800' : 'text-gray-700'}>{item}</span>
+            <span className={completed ? 'text-green-800' : 'text-muted-foreground'}>{item}</span>
           </li>
         ))}
       </ul>

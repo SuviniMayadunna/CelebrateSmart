@@ -1,5 +1,6 @@
 import { AppScreen, EventData } from '@/App';
 import { Download, Printer, Calendar, Clock, MapPin, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface EventPlanViewerProps {
   event: EventData;
@@ -8,6 +9,35 @@ interface EventPlanViewerProps {
 
 export function EventPlanViewer({ event, onNavigate }: EventPlanViewerProps) {
   const orderId = Math.random().toString(36).substring(7).toUpperCase();
+
+  const setupTone = (tone: string) => {
+    switch (tone) {
+      case 'yellow':
+        return {
+          container: 'bg-yellow-50 border-yellow-400',
+          title: 'text-yellow-900',
+          body: 'text-yellow-800',
+        };
+      case 'green':
+        return {
+          container: 'bg-green-50 border-green-500',
+          title: 'text-green-900',
+          body: 'text-green-800',
+        };
+      case 'blue':
+        return {
+          container: 'bg-blue-50 border-blue-500',
+          title: 'text-blue-900',
+          body: 'text-blue-800',
+        };
+      default:
+        return {
+          container: 'bg-muted border-border',
+          title: 'text-foreground',
+          body: 'text-muted-foreground',
+        };
+    }
+  };
 
   // Get event-specific content
   const getEventTypeConfig = (eventType: string) => {
@@ -507,10 +537,10 @@ export function EventPlanViewer({ event, onNavigate }: EventPlanViewerProps) {
   };
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-primary/10 to-secondary/10 px-4 py-8'>
+    <div className='min-h-screen bg-background px-4 py-8'>
       <div className='max-w-6xl mx-auto space-y-6'>
         {/* Header */}
-        <div className='flex items-center justify-between bg-gradient-to-r from-primary to-secondary text-white rounded-lg p-6'>
+        <div className='flex items-center justify-between bg-gradient-to-r from-primary to-secondary text-primary-foreground rounded-lg p-6'>
           <div className='flex-1'>
             <div className='flex items-center gap-4 mb-2'>
               <button
@@ -547,7 +577,7 @@ export function EventPlanViewer({ event, onNavigate }: EventPlanViewerProps) {
         </div>
 
         {/* Event Plan Content */}
-        <div className='bg-white rounded-lg shadow-lg p-8 space-y-8'>
+        <div className='bg-card text-card-foreground rounded-lg shadow-sm border p-8 space-y-8'>
           {/* Event Overview */}
           <section className='border-b pb-6'>
             <h2 className='text-2xl font-bold text-primary mb-4 flex items-center gap-2'>
@@ -660,9 +690,17 @@ export function EventPlanViewer({ event, onNavigate }: EventPlanViewerProps) {
             <h2 className='text-2xl font-bold text-primary mb-4'>📦 Setup Instructions</h2>
             <div className='space-y-4'>
               {eventConfig.setupInstructions.map((section, index) => (
-                <div key={index} className={`p-4 bg-${section.color}-50 border-l-4 border-${section.color}-400 rounded`}>
-                  <p className={`font-bold text-${section.color}-900 mb-2`}>{section.title}</p>
-                  <ul className={`list-disc list-inside text-${section.color}-800 space-y-1`}>
+                <div
+                  key={index}
+                  className={cn(
+                    'p-4 border-l-4 rounded',
+                    setupTone(section.color).container
+                  )}
+                >
+                  <p className={cn('font-bold mb-2', setupTone(section.color).title)}>
+                    {section.title}
+                  </p>
+                  <ul className={cn('list-disc list-inside space-y-1', setupTone(section.color).body)}>
                     {section.items.map((item, idx) => (
                       <li key={idx}>{item}</li>
                     ))}
@@ -701,7 +739,7 @@ export function EventPlanViewer({ event, onNavigate }: EventPlanViewerProps) {
           </section>
 
           {/* Footer */}
-          <div className='mt-8 pt-6 border-t-2 border-primary/20 text-center text-gray-600'>
+          <div className='mt-8 pt-6 border-t-2 border-primary/20 text-center text-muted-foreground'>
             <p className='font-bold text-primary text-lg'>CelebrateSmart Event Planning</p>
             <p className='text-sm mt-1'>Making your celebrations unforgettable</p>
             <p className='text-xs mt-2'>Generated on {new Date().toLocaleString()}</p>
@@ -736,11 +774,11 @@ function TimelineItem({ time, title, tasks, highlight = false }: { time: string;
         <Clock className={`w-5 h-5 ${highlight ? 'text-secondary' : 'text-primary'}`} />
         <span className={`font-bold text-lg ${highlight ? 'text-secondary' : 'text-primary'}`}>{time}</span>
       </div>
-      <p className='font-semibold text-gray-800 mb-2'>{title}</p>
-      <ul className='space-y-1 text-sm text-gray-700'>
+      <p className='font-semibold text-foreground mb-2'>{title}</p>
+      <ul className='space-y-1 text-sm text-muted-foreground'>
         {tasks.map((task, idx) => (
           <li key={idx} className='flex items-start gap-2'>
-            <span className='text-gray-400'>•</span>
+            <span className='text-muted-foreground/70'>•</span>
             <span>{task}</span>
           </li>
         ))}

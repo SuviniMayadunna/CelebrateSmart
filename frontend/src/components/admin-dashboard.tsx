@@ -1,4 +1,23 @@
 import { AppScreen, User } from '@/App';
+import type { ComponentProps } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Spinner } from '@/components/ui/spinner';
+import { cn } from '@/lib/utils';
+import { adminAPI, type AdminOrder, type AdminProduct, type AdminTemplate, type OrderStatus } from '@/lib/api';
+import { toast } from '@/hooks/use-toast';
 
 interface AdminDashboardProps {
   user: User | null;
@@ -9,31 +28,225 @@ interface AdminDashboardProps {
 }
 
 export function AdminDashboard({ adminTab }: AdminDashboardProps) {
+  const [stats, setStats] = useState<{
+    totalCustomers: number;
+    totalOrders: number;
+    totalRevenue: number;
+    pendingOrders: number;
+  } | null>(null);
 
-  const mockStats = {
-    totalCustomers: 156,
-    totalOrders: 342,
-    totalRevenue: 45200,
-    pendingOrders: 12,
+  const [orders, setOrders] = useState<AdminOrder[] | null>(null);
+  const [products, setProducts] = useState<AdminProduct[] | null>(null);
+  const [templates, setTemplates] = useState<AdminTemplate[] | null>(null);
+
+  const [loading, setLoading] = useState({
+    stats: false,
+    orders: false,
+    products: false,
+    templates: false,
+    notification: false,
+  });
+
+  const [notificationForm, setNotificationForm] = useState({
+    recipientType: 'All Customers',
+    title: '',
+    content: '',
+  });
+
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const orderStatusBadgeVariant = (
+    status: string
+  ): ComponentProps<typeof Badge>['variant'] => {
+    switch (status) {
+      case 'PENDING_PAYMENT':
+        return 'outline';
+      case 'PROCESSING':
+        return 'secondary';
+      case 'COMPLETED':
+        return 'default';
+      case 'CANCELED':
+        return 'destructive';
+      case 'PAID':
+        return 'secondary';
+      default:
+        return 'outline';
+    }
   };
 
-  const mockOrders = [
-    { id: 'ORD001', customer: 'John Doe', total: 250, status: 'Pending', date: '2025-01-19' },
-    { id: 'ORD002', customer: 'Jane Smith', total: 180, status: 'Shipped', date: '2025-01-18' },
-    { id: 'ORD003', customer: 'Mike Johnson', total: 320, status: 'Delivered', date: '2025-01-17' },
-  ];
+  const orderStatusLabel = (status: string) => {
+    switch (status) {
+      case 'PENDING_PAYMENT':
+        return 'Pending';
+      case 'PAID':
+        return 'Paid';
+      case 'PROCESSING':
+        return 'Processing';
+      case 'COMPLETED':
+        return 'Completed';
+      case 'CANCELED':
+        return 'Canceled';
+      default:
+        return status;
+    }
+  };
 
-  const mockProducts = [
-    { id: 1, name: 'Chocolate Cake', category: 'Cakes', price: 45, stock: 15 },
-    { id: 2, name: 'Balloon Set', category: 'Decorations', price: 25, stock: 42 },
-    { id: 3, name: 'Catering Package', category: 'Food', price: 150, stock: 8 },
-  ];
+  const formatDate = (dateIso: string) => {
+    const d = new Date(dateIso);
+    if (Number.isNaN(d.getTime())) return dateIso;
+    return d.toISOString().slice(0, 10);
+  };
 
-  const mockTemplates = [
-    { id: 1, name: 'Birthday Party', steps: 6, active: true },
-    { id: 2, name: 'Proposal', steps: 6, active: true },
-    { id: 3, name: 'Baby Shower', steps: 6, active: true },
-  ];
+  const toNumber = (value: number | string) => {
+    if (typeof value === 'number') return value;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const totals = useMemo(() => {
+    if (!stats) return null;
+    return {
+      ...stats,
+      totalRevenue: toNumber(stats.totalRevenue),
+    };
+  }, [stats]);
+
+  const loadStatsAndOrders = async () => {
+    setLoadError(null);
+    setLoading((s) => ({ ...s, stats: true, orders: true }));
+    try {
+      const [statsRes, ordersRes] = await Promise.all([
+        adminAPI.getStats(),
+        adminAPI.listOrders(20),
+      ]);
+      setStats({
+        totalCustomers: statsRes.data.totalCustomers,
+        totalOrders: statsRes.data.totalOrders,
+        totalRevenue: toNumber(statsRes.data.totalRevenue),
+        pendingOrders: statsRes.data.pendingOrders,
+      });
+      setOrders(ordersRes.data.orders);
+    } catch (err: unknown) {
+      setLoadError(err instanceof Error ? err.message : 'Failed to load admin data');
+    } finally {
+      setLoading((s) => ({ ...s, stats: false, orders: false }));
+    }
+  };
+
+  const loadProducts = async () => {
+    setLoadError(null);
+    setLoading((s) => ({ ...s, products: true }));
+    try {
+      const res = await adminAPI.listProducts(200);
+      setProducts(res.data.products);
+    } catch (err: unknown) {
+      setLoadError(err instanceof Error ? err.message : 'Failed to load products');
+    } finally {
+      setLoading((s) => ({ ...s, products: false }));
+    }
+  };
+
+  const loadTemplates = async () => {
+    setLoadError(null);
+    setLoading((s) => ({ ...s, templates: true }));
+    try {
+      const res = await adminAPI.listTemplates(200);
+      setTemplates(res.data.templates);
+    } catch (err: unknown) {
+      setLoadError(err instanceof Error ? err.message : 'Failed to load templates');
+    } finally {
+      setLoading((s) => ({ ...s, templates: false }));
+    }
+  };
+
+  useEffect(() => {
+    // Initial load
+    if (!stats || !orders) {
+      void loadStatsAndOrders();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (adminTab === 'products' && !products && !loading.products) {
+      void loadProducts();
+    }
+    if (adminTab === 'templates' && !templates && !loading.templates) {
+      void loadTemplates();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminTab]);
+
+  const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
+    try {
+      const res = await adminAPI.updateOrderStatus(orderId, status);
+      setOrders((prev) =>
+        (prev ?? []).map((o) => (o.id === orderId ? res.data.order : o))
+      );
+      toast({ title: 'Order updated', description: `Status set to ${orderStatusLabel(status)}` });
+    } catch (err: unknown) {
+      toast({
+        variant: 'destructive',
+        title: 'Update failed',
+        description: err instanceof Error ? err.message : 'Could not update order',
+      });
+    }
+  };
+
+  const setProductActive = async (productId: string, isActive: boolean) => {
+    try {
+      const res = await adminAPI.setProductActive(productId, isActive);
+      setProducts((prev) =>
+        (prev ?? []).map((p) => (p.id === productId ? res.data.product : p))
+      );
+      toast({
+        title: 'Product updated',
+        description: isActive ? 'Product activated' : 'Product deactivated',
+      });
+    } catch (err: unknown) {
+      toast({
+        variant: 'destructive',
+        title: 'Update failed',
+        description: err instanceof Error ? err.message : 'Could not update product',
+      });
+    }
+  };
+
+  const setTemplateActive = async (templateId: string, isActive: boolean) => {
+    try {
+      const res = await adminAPI.setTemplateActive(templateId, isActive);
+      setTemplates((prev) =>
+        (prev ?? []).map((t) => (t.id === templateId ? res.data.template : t))
+      );
+      toast({
+        title: 'Template updated',
+        description: isActive ? 'Template activated' : 'Template deactivated',
+      });
+    } catch (err: unknown) {
+      toast({
+        variant: 'destructive',
+        title: 'Update failed',
+        description: err instanceof Error ? err.message : 'Could not update template',
+      });
+    }
+  };
+
+  const submitNotification = async () => {
+    setLoading((s) => ({ ...s, notification: true }));
+    try {
+      await adminAPI.sendNotification(notificationForm);
+      toast({ title: 'Notification sent', description: 'Your message was queued.' });
+      setNotificationForm((f) => ({ ...f, title: '', content: '' }));
+    } catch (err: unknown) {
+      toast({
+        variant: 'destructive',
+        title: 'Send failed',
+        description: err instanceof Error ? err.message : 'Could not send notification',
+      });
+    } finally {
+      setLoading((s) => ({ ...s, notification: false }));
+    }
+  };
 
   return (
     <div className='min-h-screen'>
@@ -42,60 +255,98 @@ export function AdminDashboard({ adminTab }: AdminDashboardProps) {
         {/* Overview Tab */}
         {adminTab === 'overview' && (
           <div className='space-y-8'>
-            <h2 className='text-3xl font-bold'>Dashboard Overview</h2>
+            <div className='flex items-center justify-between gap-4'>
+              <div>
+                <h2 className='text-3xl font-bold tracking-tight'>Dashboard Overview</h2>
+                <p className='text-sm text-muted-foreground'>High-level performance and recent activity</p>
+              </div>
+            </div>
 
             <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
               {[
-                { label: 'Total Customers', value: mockStats.totalCustomers, color: 'from-primary' },
-                { label: 'Total Orders', value: mockStats.totalOrders, color: 'from-secondary' },
-                { label: 'Total Revenue', value: `$${mockStats.totalRevenue}`, color: 'from-accent' },
-                { label: 'Pending Orders', value: mockStats.pendingOrders, color: 'from-destructive' },
+                { label: 'Total Customers', value: totals?.totalCustomers ?? '—' },
+                { label: 'Total Orders', value: totals?.totalOrders ?? '—' },
+                { label: 'Total Revenue', value: totals ? `$${totals.totalRevenue}` : '—' },
+                { label: 'Pending Orders', value: totals?.pendingOrders ?? '—' },
               ].map((stat) => (
-                <div
-                  key={stat.label}
-                  className={`bg-gradient-to-br ${stat.color} to-transparent/10 p-6 rounded-lg border border-border`}
-                >
-                  <p className='text-muted-foreground text-sm mb-2'>{stat.label}</p>
-                  <p className='text-3xl font-bold'>{stat.value}</p>
-                </div>
+                <Card key={stat.label} className='shadow-sm'>
+                  <CardHeader className='pb-2'>
+                    <CardTitle className='text-sm font-medium text-muted-foreground'>
+                      {stat.label}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className='text-3xl font-bold tracking-tight'>
+                      {loading.stats ? <span className='inline-flex items-center gap-2 text-base'><Spinner className='size-4' /> Loading</span> : stat.value}
+                    </p>
+                  </CardContent>
+                </Card>
               ))}
             </div>
 
-            <div className='bg-card border border-border rounded-lg p-6'>
-              <h3 className='text-xl font-bold mb-4'>Recent Orders</h3>
-              <div className='overflow-x-auto'>
-                <table className='w-full text-sm'>
-                  <thead className='border-b border-border'>
-                    <tr>
-                      <th className='text-left py-3 px-4'>Order ID</th>
-                      <th className='text-left py-3 px-4'>Customer</th>
-                      <th className='text-left py-3 px-4'>Total</th>
-                      <th className='text-left py-3 px-4'>Status</th>
-                      <th className='text-left py-3 px-4'>Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {mockOrders.map(order => (
-                      <tr key={order.id} className='border-b border-border hover:bg-muted/50'>
-                        <td className='py-3 px-4 font-mono text-xs'>{order.id}</td>
-                        <td className='py-3 px-4'>{order.customer}</td>
-                        <td className='py-3 px-4'>${order.total}</td>
-                        <td className='py-3 px-4'>
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            order.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                            order.status === 'Shipped' ? 'bg-blue-100 text-blue-800' :
-                            'bg-green-100 text-green-800'
-                          }`}>
-                            {order.status}
+            {loadError && (
+              <Card className='border-destructive/30'>
+                <CardHeader>
+                  <CardTitle className='text-base text-destructive'>Could not load admin data</CardTitle>
+                </CardHeader>
+                <CardContent className='flex items-center justify-between gap-3'>
+                  <p className='text-sm text-muted-foreground'>{loadError}</p>
+                  <Button type='button' variant='secondary' onClick={() => void loadStatsAndOrders()}>
+                    Retry
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            <Card>
+              <CardHeader>
+                <CardTitle className='text-xl'>Recent Orders</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Order ID</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading.orders && (
+                      <TableRow>
+                        <TableCell colSpan={5} className='py-10 text-center text-muted-foreground'>
+                          <span className='inline-flex items-center gap-2'>
+                            <Spinner className='size-4' /> Loading orders…
                           </span>
-                        </td>
-                        <td className='py-3 px-4 text-muted-foreground'>{order.date}</td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {!loading.orders && (orders?.length ?? 0) === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className='py-10 text-center text-muted-foreground'>
+                          No orders yet
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {(orders ?? []).map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className='font-mono text-xs'>{order.orderNumber}</TableCell>
+                        <TableCell>{order.customer}</TableCell>
+                        <TableCell>${toNumber(order.totalAmount)}</TableCell>
+                        <TableCell>
+                          <Badge variant={orderStatusBadgeVariant(order.status)}>
+                            {orderStatusLabel(order.status)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className='text-muted-foreground'>{formatDate(order.date)}</TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </div>
         )}
 
@@ -103,90 +354,163 @@ export function AdminDashboard({ adminTab }: AdminDashboardProps) {
         {adminTab === 'products' && (
           <div className='space-y-8'>
             <div className='flex items-center justify-between'>
-              <h2 className='text-3xl font-bold'>Product Management</h2>
-              <button className='px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90'>
+              <div>
+                <h2 className='text-3xl font-bold tracking-tight'>Product Management</h2>
+                <p className='text-sm text-muted-foreground'>Manage catalog items and inventory</p>
+              </div>
+              <Button>
                 + Add Product
-              </button>
+              </Button>
             </div>
 
-            <div className='bg-card border border-border rounded-lg p-6'>
-              <div className='overflow-x-auto'>
-                <table className='w-full text-sm'>
-                  <thead className='border-b border-border'>
-                    <tr>
-                      <th className='text-left py-3 px-4'>Product Name</th>
-                      <th className='text-left py-3 px-4'>Category</th>
-                      <th className='text-left py-3 px-4'>Price</th>
-                      <th className='text-left py-3 px-4'>Stock</th>
-                      <th className='text-left py-3 px-4'>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {mockProducts.map(product => (
-                      <tr key={product.id} className='border-b border-border hover:bg-muted/50'>
-                        <td className='py-3 px-4 font-semibold'>{product.name}</td>
-                        <td className='py-3 px-4'>{product.category}</td>
-                        <td className='py-3 px-4'>${product.price}</td>
-                        <td className='py-3 px-4'>
-                          <span className={product.stock > 20 ? 'text-green-600' : product.stock > 5 ? 'text-yellow-600' : 'text-red-600'}>
-                            {product.stock} units
+            <Card>
+              <CardHeader>
+                <CardTitle className='text-xl'>Products</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Product Name</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading.products && (
+                      <TableRow>
+                        <TableCell colSpan={5} className='py-10 text-center text-muted-foreground'>
+                          <span className='inline-flex items-center gap-2'>
+                            <Spinner className='size-4' /> Loading products…
                           </span>
-                        </td>
-                        <td className='py-3 px-4'>
-                          <button className='text-primary hover:underline text-xs mr-3'>Edit</button>
-                          <button className='text-destructive hover:underline text-xs'>Delete</button>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {!loading.products && (products?.length ?? 0) === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className='py-10 text-center text-muted-foreground'>
+                          No products found
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {(products ?? []).map((product) => (
+                      <TableRow key={product.id}>
+                        <TableCell className='font-semibold'>{product.name}</TableCell>
+                        <TableCell>{product.category}</TableCell>
+                        <TableCell>${toNumber(product.price)}</TableCell>
+                        <TableCell>
+                          <Badge variant={product.isActive ? 'secondary' : 'outline'}>
+                            {product.isActive ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className='flex items-center gap-3'>
+                            <Button type='button' variant='link' className='h-auto px-0 text-xs' disabled>
+                              Edit
+                            </Button>
+                            {product.isActive ? (
+                              <Button
+                                type='button'
+                                variant='link'
+                                className='h-auto px-0 text-xs text-destructive'
+                                onClick={() => void setProductActive(product.id, false)}
+                              >
+                                Deactivate
+                              </Button>
+                            ) : (
+                              <Button
+                                type='button'
+                                variant='link'
+                                className='h-auto px-0 text-xs'
+                                onClick={() => void setProductActive(product.id, true)}
+                              >
+                                Activate
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {/* Orders Tab */}
         {adminTab === 'orders' && (
           <div className='space-y-8'>
-            <h2 className='text-3xl font-bold'>Order Management</h2>
-
-            <div className='bg-card border border-border rounded-lg p-6'>
-              <div className='overflow-x-auto'>
-                <table className='w-full text-sm'>
-                  <thead className='border-b border-border'>
-                    <tr>
-                      <th className='text-left py-3 px-4'>Order ID</th>
-                      <th className='text-left py-3 px-4'>Customer</th>
-                      <th className='text-left py-3 px-4'>Total</th>
-                      <th className='text-left py-3 px-4'>Status</th>
-                      <th className='text-left py-3 px-4'>Date</th>
-                      <th className='text-left py-3 px-4'>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {mockOrders.map(order => (
-                      <tr key={order.id} className='border-b border-border hover:bg-muted/50'>
-                        <td className='py-3 px-4 font-mono text-xs'>{order.id}</td>
-                        <td className='py-3 px-4'>{order.customer}</td>
-                        <td className='py-3 px-4 font-semibold'>${order.total}</td>
-                        <td className='py-3 px-4'>
-                          <select className='px-2 py-1 rounded border border-border bg-background text-xs'>
-                            <option>{order.status}</option>
-                            <option>Pending</option>
-                            <option>Shipped</option>
-                            <option>Delivered</option>
-                          </select>
-                        </td>
-                        <td className='py-3 px-4 text-muted-foreground'>{order.date}</td>
-                        <td className='py-3 px-4'>
-                          <button className='text-primary hover:underline text-xs'>View Details</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div>
+              <h2 className='text-3xl font-bold tracking-tight'>Order Management</h2>
+              <p className='text-sm text-muted-foreground'>Track and update order statuses</p>
             </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className='text-xl'>Orders</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Order ID</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading.orders && (
+                      <TableRow>
+                        <TableCell colSpan={6} className='py-10 text-center text-muted-foreground'>
+                          <span className='inline-flex items-center gap-2'>
+                            <Spinner className='size-4' /> Loading orders…
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {!loading.orders && (orders?.length ?? 0) === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className='py-10 text-center text-muted-foreground'>
+                          No orders yet
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {(orders ?? []).map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className='font-mono text-xs'>{order.orderNumber}</TableCell>
+                        <TableCell>{order.customer}</TableCell>
+                        <TableCell className='font-semibold'>${toNumber(order.totalAmount)}</TableCell>
+                        <TableCell>
+                          <select
+                            value={order.status}
+                            onChange={(e) => void updateOrderStatus(order.id, e.target.value as OrderStatus)}
+                            className={cn('h-9 rounded-md border border-input bg-background px-3 text-xs shadow-sm')}
+                          >
+                            <option value='PENDING_PAYMENT'>Pending</option>
+                            <option value='PAID'>Paid</option>
+                            <option value='PROCESSING'>Processing</option>
+                            <option value='COMPLETED'>Completed</option>
+                            <option value='CANCELED'>Canceled</option>
+                          </select>
+                        </TableCell>
+                        <TableCell className='text-muted-foreground'>{formatDate(order.date)}</TableCell>
+                        <TableCell>
+                          <Button type='button' variant='link' className='h-auto px-0 text-xs' disabled>
+                            View Details
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </div>
         )}
 
@@ -194,29 +518,73 @@ export function AdminDashboard({ adminTab }: AdminDashboardProps) {
         {adminTab === 'templates' && (
           <div className='space-y-8'>
             <div className='flex items-center justify-between'>
-              <h2 className='text-3xl font-bold'>Event Templates</h2>
-              <button className='px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90'>
+              <div>
+                <h2 className='text-3xl font-bold tracking-tight'>Event Templates</h2>
+                <p className='text-sm text-muted-foreground'>Create and maintain planning templates</p>
+              </div>
+              <Button>
                 + New Template
-              </button>
+              </Button>
             </div>
 
             <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-              {mockTemplates.map(template => (
-                <div key={template.id} className='bg-card border border-border rounded-lg p-6'>
-                  <div className='flex items-start justify-between mb-4'>
-                    <h3 className='font-bold text-lg'>{template.name}</h3>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      template.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {template.active ? 'Active' : 'Inactive'}
+              {loading.templates && (
+                <Card>
+                  <CardContent className='py-10 text-center text-muted-foreground'>
+                    <span className='inline-flex items-center gap-2'>
+                      <Spinner className='size-4' /> Loading templates…
                     </span>
-                  </div>
-                  <p className='text-sm text-muted-foreground mb-4'>{template.steps} planning steps</p>
-                  <div className='flex gap-2'>
-                    <button className='flex-1 text-primary hover:bg-primary/10 px-3 py-2 rounded text-sm'>Edit</button>
-                    <button className='flex-1 text-destructive hover:bg-destructive/10 px-3 py-2 rounded text-sm'>Delete</button>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
+              )}
+              {!loading.templates && (templates?.length ?? 0) === 0 && (
+                <Card>
+                  <CardContent className='py-10 text-center text-muted-foreground'>
+                    No templates found
+                  </CardContent>
+                </Card>
+              )}
+              {(templates ?? []).map((template) => (
+                <Card key={template.id} className='shadow-sm'>
+                  <CardHeader className='space-y-1'>
+                    <div className='flex items-start justify-between gap-4'>
+                      <CardTitle className='text-lg'>
+                        {template.emoji ? `${template.emoji} ` : ''}
+                        {template.name}
+                      </CardTitle>
+                      <Badge variant={template.isActive ? 'secondary' : 'outline'}>
+                        {template.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </div>
+                    <p className='text-sm text-muted-foreground'>{template.steps} planning steps</p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className='flex gap-2'>
+                      <Button type='button' variant='secondary' className='flex-1' disabled>
+                        Edit
+                      </Button>
+                      {template.isActive ? (
+                        <Button
+                          type='button'
+                          variant='destructive'
+                          className='flex-1'
+                          onClick={() => void setTemplateActive(template.id, false)}
+                        >
+                          Deactivate
+                        </Button>
+                      ) : (
+                        <Button
+                          type='button'
+                          variant='secondary'
+                          className='flex-1'
+                          onClick={() => void setTemplateActive(template.id, true)}
+                        >
+                          Activate
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </div>
@@ -225,13 +593,33 @@ export function AdminDashboard({ adminTab }: AdminDashboardProps) {
         {/* Notifications Tab */}
         {adminTab === 'notifications' && (
           <div className='space-y-8'>
-            <h2 className='text-3xl font-bold'>Send Notifications</h2>
+            <div>
+              <h2 className='text-3xl font-bold tracking-tight'>Send Notifications</h2>
+              <p className='text-sm text-muted-foreground'>Broadcast updates to customer segments</p>
+            </div>
 
-            <div className='bg-card border border-border rounded-lg p-6 max-w-2xl'>
-              <form className='space-y-6'>
+            <Card className='max-w-2xl'>
+              <CardHeader>
+                <CardTitle className='text-xl'>Compose Message</CardTitle>
+              </CardHeader>
+              <CardContent>
+              <form
+                className='space-y-6'
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void submitNotification();
+                }}
+              >
                 <div>
-                  <label className='block font-semibold mb-2'>Recipient Type</label>
-                  <select className='w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary'>
+                  <label className='block text-sm font-medium mb-2'>Recipient Type</label>
+                  <select
+                    value={notificationForm.recipientType}
+                    onChange={(e) =>
+                      setNotificationForm((s) => ({ ...s, recipientType: e.target.value }))
+                    }
+                    className='h-11 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm'
+                    disabled={loading.notification}
+                  >
                     <option>All Customers</option>
                     <option>Pending Orders</option>
                     <option>Birthday Events</option>
@@ -239,39 +627,49 @@ export function AdminDashboard({ adminTab }: AdminDashboardProps) {
                 </div>
 
                 <div>
-                  <label className='block font-semibold mb-2'>Message Title</label>
-                  <input
+                  <label className='block text-sm font-medium mb-2'>Message Title</label>
+                  <Input
                     type='text'
-                    placeholder='Notification title...'
-                    className='w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary'
+                    placeholder='Notification title…'
+                    value={notificationForm.title}
+                    onChange={(e) => setNotificationForm((s) => ({ ...s, title: e.target.value }))}
+                    disabled={loading.notification}
                   />
                 </div>
 
                 <div>
-                  <label className='block font-semibold mb-2'>Message Content</label>
-                  <textarea
-                    placeholder='Write your notification message...'
+                  <label className='block text-sm font-medium mb-2'>Message Content</label>
+                  <Textarea
+                    placeholder='Write your notification message…'
                     rows={6}
-                    className='w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary'
+                    value={notificationForm.content}
+                    onChange={(e) => setNotificationForm((s) => ({ ...s, content: e.target.value }))}
+                    disabled={loading.notification}
                   />
                 </div>
 
                 <div className='flex gap-4'>
-                  <button
+                  <Button
                     type='submit'
-                    className='flex-1 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors'
+                    className='flex-1'
+                    disabled={loading.notification || !notificationForm.title.trim() || !notificationForm.content.trim()}
                   >
-                    Send Notification
-                  </button>
-                  <button
+                    {loading.notification && <Spinner className='size-4' />}
+                    {loading.notification ? 'Sending…' : 'Send Notification'}
+                  </Button>
+                  <Button
                     type='button'
-                    className='flex-1 py-3 bg-secondary text-secondary-foreground rounded-lg font-semibold hover:bg-secondary/90 transition-colors'
+                    variant='secondary'
+                    className='flex-1'
+                    disabled={loading.notification}
+                    onClick={() => setNotificationForm({ recipientType: 'All Customers', title: '', content: '' })}
                   >
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </form>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         )}
       </main>

@@ -1,7 +1,26 @@
-import React from "react"
-import { useState } from 'react';
+import React from 'react';
 import { AppScreen } from '@/App';
 import { Mail, Lock, ArrowLeft, User, Phone } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 
 interface RegistrationScreenProps {
   onRegister: (name: string, email: string, password: string, phone: string) => void;
@@ -10,41 +29,39 @@ interface RegistrationScreenProps {
   error?: string | null;
 }
 
-export function RegistrationScreen({ onRegister, onNavigate, isLoading = false, error }: RegistrationScreenProps) {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: '',
+const registrationSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Full name is required'),
+    email: z.string().trim().email('Please enter a valid email'),
+    phone: z.string().trim().min(1, 'Phone number is required'),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
+  })
+  .refine((values) => values.password === values.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [validationError, setValidationError] = useState('');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    setValidationError('');
-  };
+type RegistrationFormValues = z.infer<typeof registrationSchema>;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validation
-    if (formData.password !== formData.confirmPassword) {
-      setValidationError('Passwords do not match');
-      return;
-    }
-    
-    if (formData.password.length < 6) {
-      setValidationError('Password must be at least 6 characters');
-      return;
-    }
+export function RegistrationScreen({ onRegister, onNavigate, isLoading = false, error }: RegistrationScreenProps) {
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
 
-    if (formData.name && formData.email && formData.password && formData.phone) {
-      onRegister(formData.name, formData.email, formData.password, formData.phone);
-    }
+  const form = useForm<RegistrationFormValues>({
+    resolver: zodResolver(registrationSchema),
+    defaultValues: {
+      name: '',
+      email: '',
+      phone: '',
+      password: '',
+      confirmPassword: '',
+    },
+    mode: 'onTouched',
+  });
+
+  const submit = (values: RegistrationFormValues) => {
+    onRegister(values.name, values.email, values.password, values.phone);
   };
 
   return (
@@ -57,154 +74,200 @@ export function RegistrationScreen({ onRegister, onNavigate, isLoading = false, 
 
       <div className='relative z-10 max-w-md w-full'>
         {/* Back button */}
-        <button
+        <Button
+          type='button'
+          variant='ghost'
           onClick={() => onNavigate('welcome')}
-          className='flex items-center space-x-2 text-white mb-6 hover:translate-x-1 transition-transform'
+          className='mb-6 h-auto px-0 text-white hover:bg-white/10 hover:text-white'
         >
           <ArrowLeft className='w-5 h-5' />
-          <span className='font-medium'>Back to Home</span>
-        </button>
+          <span className='ml-2 font-medium'>Back to Home</span>
+        </Button>
 
         {/* Registration Card */}
-        <div className='bg-white rounded-3xl shadow-2xl p-8 space-y-6'>
-          <div className='text-center space-y-2'>
-            <h1 className='text-3xl font-black text-gray-800'>Create Account</h1>
-            <p className='text-gray-600'>Join us and start planning amazing events</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className='space-y-5'>
-            {/* Name Input */}
-            <div>
-              <label className='block text-sm font-bold text-gray-700 mb-2'>Full Name</label>
-              <div className='relative'>
-                <User className='absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400' />
-                <input
-                  type='text'
+        <Card className='rounded-3xl shadow-2xl border-0'>
+          <CardHeader className='text-center space-y-2'>
+            <CardTitle className='text-3xl font-black'>Create Account</CardTitle>
+            <CardDescription>Join us and start planning amazing events</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(submit)} className='space-y-5'>
+                <FormField
+                  control={form.control}
                   name='name'
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder='John Doe'
-                  className='w-full pl-12 pr-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary focus:outline-none transition-colors bg-gray-50 focus:bg-white'
-                  required
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Name</FormLabel>
+                      <div className='relative'>
+                        <User className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground' />
+                        <FormControl>
+                          <Input
+                            type='text'
+                            placeholder='John Doe'
+                            className='pl-9'
+                            autoComplete='name'
+                            disabled={isLoading}
+                            {...field}
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-            </div>
 
-            {/* Email Input */}
-            <div>
-              <label className='block text-sm font-bold text-gray-700 mb-2'>Email Address</label>
-              <div className='relative'>
-                <Mail className='absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400' />
-                <input
-                  type='email'
+                <FormField
+                  control={form.control}
                   name='email'
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder='you@example.com'
-                  className='w-full pl-12 pr-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary focus:outline-none transition-colors bg-gray-50 focus:bg-white'
-                  required
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email Address</FormLabel>
+                      <div className='relative'>
+                        <Mail className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground' />
+                        <FormControl>
+                          <Input
+                            type='email'
+                            placeholder='you@example.com'
+                            className='pl-9'
+                            autoComplete='email'
+                            disabled={isLoading}
+                            {...field}
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-            </div>
 
-            {/* Phone Input */}
-            <div>
-              <label className='block text-sm font-bold text-gray-700 mb-2'>Phone Number</label>
-              <div className='relative'>
-                <Phone className='absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400' />
-                <input
-                  type='tel'
+                <FormField
+                  control={form.control}
                   name='phone'
-                  value={formData.phone}
-                  onChange={handleChange}
-                  placeholder='+1 234 567 8900'
-                  className='w-full pl-12 pr-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary focus:outline-none transition-colors bg-gray-50 focus:bg-white'
-                  required
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <div className='relative'>
+                        <Phone className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground' />
+                        <FormControl>
+                          <Input
+                            type='tel'
+                            placeholder='+1 234 567 8900'
+                            className='pl-9'
+                            autoComplete='tel'
+                            disabled={isLoading}
+                            {...field}
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-            </div>
 
-            {/* Password Input */}
-            <div>
-              <label className='block text-sm font-bold text-gray-700 mb-2'>Password</label>
-              <div className='relative'>
-                <Lock className='absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400' />
-                <input
-                  type={showPassword ? 'text' : 'password'}
+                <FormField
+                  control={form.control}
                   name='password'
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder='••••••••'
-                  className='w-full pl-12 pr-12 py-3 rounded-xl border-2 border-gray-200 focus:border-primary focus:outline-none transition-colors bg-gray-50 focus:bg-white'
-                  required
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <div className='relative'>
+                        <Lock className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground' />
+                        <FormControl>
+                          <Input
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder='••••••••'
+                            className='pl-9 pr-16'
+                            autoComplete='new-password'
+                            disabled={isLoading}
+                            {...field}
+                          />
+                        </FormControl>
+                        <Button
+                          type='button'
+                          variant='ghost'
+                          size='sm'
+                          onClick={() => setShowPassword((v) => !v)}
+                          disabled={isLoading}
+                          className='absolute right-1 top-1/2 -translate-y-1/2 h-8'
+                        >
+                          {showPassword ? 'Hide' : 'Show'}
+                        </Button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                <button
-                  type='button'
-                  onClick={() => setShowPassword(!showPassword)}
-                  className='absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground hover:text-foreground'
-                >
-                  {showPassword ? 'Hide' : 'Show'}
-                </button>
-              </div>
-            </div>
 
-            {/* Confirm Password Input */}
-            <div>
-              <label className='block text-sm font-bold text-gray-700 mb-2'>Confirm Password</label>
-              <div className='relative'>
-                <Lock className='absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400' />
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
+                <FormField
+                  control={form.control}
                   name='confirmPassword'
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  placeholder='••••••••'
-                  className='w-full pl-12 pr-12 py-3 rounded-xl border-2 border-gray-200 focus:border-primary focus:outline-none transition-colors bg-gray-50 focus:bg-white'
-                  required
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm Password</FormLabel>
+                      <div className='relative'>
+                        <Lock className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground' />
+                        <FormControl>
+                          <Input
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            placeholder='••••••••'
+                            className='pl-9 pr-16'
+                            autoComplete='new-password'
+                            disabled={isLoading}
+                            {...field}
+                          />
+                        </FormControl>
+                        <Button
+                          type='button'
+                          variant='ghost'
+                          size='sm'
+                          onClick={() => setShowConfirmPassword((v) => !v)}
+                          disabled={isLoading}
+                          className='absolute right-1 top-1/2 -translate-y-1/2 h-8'
+                        >
+                          {showConfirmPassword ? 'Hide' : 'Show'}
+                        </Button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                <button
-                  type='button'
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className='absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground hover:text-foreground'
+
+                {error && (
+                  <div className='rounded-lg border border-destructive/20 bg-destructive/10 p-3'>
+                    <p className='text-sm text-destructive font-medium'>{error}</p>
+                  </div>
+                )}
+
+                <Button
+                  type='submit'
+                  disabled={isLoading}
+                  className='w-full h-11 text-base font-bold'
                 >
-                  {showConfirmPassword ? 'Hide' : 'Show'}
-                </button>
-              </div>
-            </div>
-
-            {/* Local validation error */}
-            {(validationError || error) && (
-              <div className='p-3 bg-red-50 border border-red-200 rounded-lg'>
-                <p className='text-sm text-red-600 font-medium'>{validationError || error}</p>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <button
-              type='submit'
-              disabled={isLoading}
-              className='w-full py-4 bg-gradient-to-r from-primary to-secondary text-white rounded-xl font-bold hover:scale-105 transition-all shadow-lg text-lg disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2'
-            >
-              {isLoading && (
-                <span className='w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin' />
-              )}
-              {isLoading ? 'Creating Account…' : 'Create Account'}
-            </button>
-          </form>
+                  {isLoading && (
+                    <span className='size-4 border-2 border-current border-t-transparent rounded-full animate-spin' />
+                  )}
+                  {isLoading ? 'Creating Account…' : 'Create Account'}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
 
           {/* Login Link */}
-          <div className='text-center pt-4 border-t border-gray-200'>
-            <p className='text-gray-600'>
+          <div className='text-center pt-4 border-t border-border'>
+            <p className='text-muted-foreground'>
               Already have an account?{' '}
-              <button
+              <Button
+                type='button'
+                variant='link'
                 onClick={() => onNavigate('login')}
-                className='text-primary font-bold hover:text-primary/90 transition-colors'
+                className='px-1 font-bold text-primary'
               >
                 Sign In
-              </button>
+              </Button>
             </p>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );
