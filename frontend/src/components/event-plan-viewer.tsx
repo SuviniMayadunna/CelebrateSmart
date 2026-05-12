@@ -16,7 +16,7 @@ export function EventPlanViewer({ event, onNavigate }: EventPlanViewerProps) {
     if (type.includes('birthday')) {
       return {
         icon: '',
-        color: 'from-pink-500 to-purple-500',
+        color: 'from-primary to-secondary',
         timeline: [
           {
             time: -2,
@@ -251,7 +251,7 @@ export function EventPlanViewer({ event, onNavigate }: EventPlanViewerProps) {
     } else if (type.includes('party')) {
       return {
         icon: '🎉',
-        color: 'from-orange-500 to-red-500',
+        color: 'from-accent to-primary',
         timeline: [
           {
             time: -2,
@@ -510,7 +510,7 @@ export function EventPlanViewer({ event, onNavigate }: EventPlanViewerProps) {
     <div className='min-h-screen bg-gradient-to-br from-primary/10 to-secondary/10 px-4 py-8'>
       <div className='max-w-6xl mx-auto space-y-6'>
         {/* Header */}
-        <div className='flex items-center justify-between bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg p-6'>
+        <div className='flex items-center justify-between bg-gradient-to-r from-primary to-secondary text-white rounded-lg p-6'>
           <div className='flex-1'>
             <div className='flex items-center gap-4 mb-2'>
               <button
@@ -538,7 +538,7 @@ export function EventPlanViewer({ event, onNavigate }: EventPlanViewerProps) {
             </button>
             <button
               onClick={handleDownloadPlan}
-              className='inline-flex items-center gap-2 px-4 py-2 bg-white text-purple-600 rounded-lg font-semibold hover:scale-105 transition-all shadow-lg no-print'
+              className='inline-flex items-center gap-2 px-4 py-2 bg-white text-primary rounded-lg font-semibold hover:scale-105 transition-all shadow-lg no-print'
             >
               <Download className='w-5 h-5' />
               Download
@@ -550,32 +550,32 @@ export function EventPlanViewer({ event, onNavigate }: EventPlanViewerProps) {
         <div className='bg-white rounded-lg shadow-lg p-8 space-y-8'>
           {/* Event Overview */}
           <section className='border-b pb-6'>
-            <h2 className='text-2xl font-bold text-purple-600 mb-4 flex items-center gap-2'>
+            <h2 className='text-2xl font-bold text-primary mb-4 flex items-center gap-2'>
               📋 Event Overview
             </h2>
-            <div className='mb-4 p-6 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg border-2 border-purple-200'>
+            <div className='mb-4 p-6 bg-gradient-to-r from-primary to-secondary rounded-lg border-2 border-primary/20'>
               <div>
                 <p className='text-white text-sm font-semibold mb-1 opacity-90'>Event Type</p>
                 <p className='text-white text-3xl font-bold capitalize'>{event.type} Event</p>
               </div>
             </div>
             <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-              <div className='bg-purple-50 p-4 rounded-lg'>
-                <div className='flex items-center gap-2 text-purple-600 mb-2'>
+              <div className='bg-primary/10 p-4 rounded-lg'>
+                <div className='flex items-center gap-2 text-primary mb-2'>
                   <Calendar className='w-5 h-5' />
                   <span className='font-bold'>Date</span>
                 </div>
                 <p className='text-lg'>{event.date}</p>
               </div>
-              <div className='bg-pink-50 p-4 rounded-lg'>
-                <div className='flex items-center gap-2 text-pink-600 mb-2'>
+              <div className='bg-secondary/10 p-4 rounded-lg'>
+                <div className='flex items-center gap-2 text-secondary mb-2'>
                   <Clock className='w-5 h-5' />
                   <span className='font-bold'>Time</span>
                 </div>
                 <p className='text-lg'>{event.time}</p>
               </div>
-              <div className='bg-orange-50 p-4 rounded-lg'>
-                <div className='flex items-center gap-2 text-orange-600 mb-2'>
+              <div className='bg-accent/10 p-4 rounded-lg'>
+                <div className='flex items-center gap-2 text-accent mb-2'>
                   <MapPin className='w-5 h-5' />
                   <span className='font-bold'>Venue</span>
                 </div>
@@ -599,7 +599,7 @@ export function EventPlanViewer({ event, onNavigate }: EventPlanViewerProps) {
 
           {/* Event Day Timeline */}
           <section className='border-b pb-6'>
-            <h2 className='text-2xl font-bold text-purple-600 mb-4'>⏰ Event Day Timeline</h2>
+            <h2 className='text-2xl font-bold text-primary mb-4'>⏰ Event Day Timeline</h2>
             <div className='space-y-4'>
               {eventConfig.timeline.map((item, index) => (
                 <TimelineItem 
@@ -615,7 +615,7 @@ export function EventPlanViewer({ event, onNavigate }: EventPlanViewerProps) {
 
           {/* Completed Tasks */}
           <section className='border-b pb-6'>
-            <h2 className='text-2xl font-bold text-purple-600 mb-4'>✅ Completed Planning Tasks</h2>
+            <h2 className='text-2xl font-bold text-primary mb-4'>✅ Completed Planning Tasks</h2>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               {event.completedTasks.map((task) => (
                 <div key={task} className='p-4 bg-green-50 border-l-4 border-green-500 rounded-lg'>
@@ -630,7 +630,7 @@ export function EventPlanViewer({ event, onNavigate }: EventPlanViewerProps) {
 
           {/* Important Contacts */}
           <section className='border-b pb-6'>
-            <h2 className='text-2xl font-bold text-purple-600 mb-4'>📞 Important Contacts</h2>
+            <h2 className='text-2xl font-bold text-primary mb-4'>📞 Important Contacts</h2>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div className='p-4 bg-blue-50 rounded-lg'>
                 <p className='font-bold text-blue-900'>Venue</p>
@@ -647,17 +647,17 @@ export function EventPlanViewer({ event, onNavigate }: EventPlanViewerProps) {
                 <p className='text-red-800'>911</p>
                 <p className='text-sm text-red-600 mt-1'>For any emergencies</p>
               </div>
-              <div className='p-4 bg-purple-50 rounded-lg'>
-                <p className='font-bold text-purple-900'>Event Reference</p>
-                <p className='text-purple-800'>{orderId}</p>
-                <p className='text-sm text-purple-600 mt-1'>Quote for inquiries</p>
+              <div className='p-4 bg-primary/10 rounded-lg'>
+                <p className='font-bold text-primary'>Event Reference</p>
+                <p className='text-foreground'>{orderId}</p>
+                <p className='text-sm text-muted-foreground mt-1'>Quote for inquiries</p>
               </div>
             </div>
           </section>
 
           {/* Setup Instructions */}
           <section className='border-b pb-6'>
-            <h2 className='text-2xl font-bold text-purple-600 mb-4'>📦 Setup Instructions</h2>
+            <h2 className='text-2xl font-bold text-primary mb-4'>📦 Setup Instructions</h2>
             <div className='space-y-4'>
               {eventConfig.setupInstructions.map((section, index) => (
                 <div key={index} className={`p-4 bg-${section.color}-50 border-l-4 border-${section.color}-400 rounded`}>
@@ -674,12 +674,12 @@ export function EventPlanViewer({ event, onNavigate }: EventPlanViewerProps) {
 
           {/* Emergency Info */}
           <section>
-            <div className='p-6 bg-orange-50 border-2 border-orange-300 rounded-lg'>
-              <h3 className='font-bold text-orange-900 text-xl mb-3 flex items-center gap-2'>
+            <div className='p-6 bg-accent/10 border-2 border-accent/30 rounded-lg'>
+              <h3 className='font-bold text-accent text-xl mb-3 flex items-center gap-2'>
                 <AlertCircle className='w-6 h-6' />
                 Emergency Preparedness
               </h3>
-              <ul className='space-y-2 text-orange-800'>
+              <ul className='space-y-2 text-foreground/90'>
                 <li className='flex items-start gap-2'>
                   <CheckCircle className='w-5 h-5 mt-1 flex-shrink-0' />
                   <span>First aid kit with event coordinator</span>
@@ -701,8 +701,8 @@ export function EventPlanViewer({ event, onNavigate }: EventPlanViewerProps) {
           </section>
 
           {/* Footer */}
-          <div className='mt-8 pt-6 border-t-2 border-purple-200 text-center text-gray-600'>
-            <p className='font-bold text-purple-600 text-lg'>CelebrateSmart Event Planning</p>
+          <div className='mt-8 pt-6 border-t-2 border-primary/20 text-center text-gray-600'>
+            <p className='font-bold text-primary text-lg'>CelebrateSmart Event Planning</p>
             <p className='text-sm mt-1'>Making your celebrations unforgettable</p>
             <p className='text-xs mt-2'>Generated on {new Date().toLocaleString()}</p>
           </div>
@@ -731,10 +731,10 @@ export function EventPlanViewer({ event, onNavigate }: EventPlanViewerProps) {
 // Helper Component
 function TimelineItem({ time, title, tasks, highlight = false }: { time: string; title: string; tasks: string[]; highlight?: boolean }) {
   return (
-    <div className={`p-4 rounded-lg border-l-4 ${highlight ? 'bg-pink-50 border-pink-500' : 'bg-purple-50 border-purple-500'}`}>
+    <div className={`p-4 rounded-lg border-l-4 ${highlight ? 'bg-secondary/10 border-secondary' : 'bg-primary/10 border-primary'}`}>
       <div className='flex items-center gap-3 mb-2'>
-        <Clock className={`w-5 h-5 ${highlight ? 'text-pink-600' : 'text-purple-600'}`} />
-        <span className={`font-bold text-lg ${highlight ? 'text-pink-900' : 'text-purple-900'}`}>{time}</span>
+        <Clock className={`w-5 h-5 ${highlight ? 'text-secondary' : 'text-primary'}`} />
+        <span className={`font-bold text-lg ${highlight ? 'text-secondary' : 'text-primary'}`}>{time}</span>
       </div>
       <p className='font-semibold text-gray-800 mb-2'>{title}</p>
       <ul className='space-y-1 text-sm text-gray-700'>
@@ -758,13 +758,13 @@ function generateEventPlanContent(event: EventData): string {
   <title>${event.name} - Event Plan</title>
   <style>
     body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 40px; line-height: 1.6; }
-    .header { text-align: center; margin-bottom: 40px; border-bottom: 3px solid #9333EA; padding-bottom: 20px; }
-    .header h1 { color: #9333EA; margin: 0; font-size: 36px; }
+    .header { text-align: center; margin-bottom: 40px; border-bottom: 3px solid #2563EB; padding-bottom: 20px; }
+    .header h1 { color: #2563EB; margin: 0; font-size: 36px; }
     .section { margin-bottom: 30px; page-break-inside: avoid; }
-    .section h2 { color: #9333EA; border-bottom: 2px solid #EC4899; padding-bottom: 10px; margin-bottom: 15px; }
+    .section h2 { color: #2563EB; border-bottom: 2px solid #0EA5E9; padding-bottom: 10px; margin-bottom: 15px; }
     .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0; }
-    .info-item { background: #F3E8FF; padding: 15px; border-radius: 8px; }
-    .timeline-item { margin: 15px 0; padding: 15px; background: #FFF1F2; border-left: 4px solid #EC4899; }
+    .info-item { background: #DBEAFE; padding: 15px; border-radius: 8px; }
+    .timeline-item { margin: 15px 0; padding: 15px; background: #E0F2FE; border-left: 4px solid #0EA5E9; }
     .completed-task { padding: 10px; margin: 5px 0; background: #F0FDF4; border-left: 4px solid #10B981; }
     @media print { body { padding: 20px; } }
   </style>
@@ -772,7 +772,7 @@ function generateEventPlanContent(event: EventData): string {
 <body>
   <div class="header">
     <h1>${event.name}</h1>
-    <p style="font-size: 20px; color: #9333EA;">EVENT PLAN</p>
+    <p style="font-size: 20px; color: #2563EB;">EVENT PLAN</p>
     <p>Generated: ${new Date().toLocaleDateString()}</p>
   </div>
   <div class="section">

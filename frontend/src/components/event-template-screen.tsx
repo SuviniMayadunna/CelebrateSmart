@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AppScreen } from '@/app/page';
+import { AppScreen } from '@/App';
 
 interface EventTemplate {
   id: string;

@@ -37,7 +37,7 @@ interface ShopScreenProps {
   initialCategory: string | null;
 }
 
-export function ShopScreen({ onNavigate, onAddToCart, event, returnToPlanning, initialCategory }: ShopScreenProps) {
+export function ShopScreen({ onAddToCart, event, returnToPlanning, initialCategory }: ShopScreenProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory);
   const [sortBy, setSortBy] = useState<'price-low' | 'price-high' | 'name'>('price-low');
   const [toast, setToast] = useState<{ show: boolean; message: string; productName: string }>({ 
@@ -147,9 +147,9 @@ export function ShopScreen({ onNavigate, onAddToCart, event, returnToPlanning, i
           {/* Products Grid */}
           <div className='flex-1 min-w-0'>
             {returnToPlanning && event && (
-              <div className='mb-6 p-4 bg-purple-100 border border-purple-300 rounded-lg'>
-                <p className='font-semibold text-purple-900'>Shopping for: {event.name}</p>
-                <p className='text-sm text-purple-700'>Items added will automatically mark planning tasks as complete</p>
+              <div className='mb-6 p-4 bg-primary/10 border border-primary/30 rounded-lg'>
+                <p className='font-semibold text-primary'>Shopping for: {event.name}</p>
+                <p className='text-sm text-primary/80'>Items added will automatically mark planning tasks as complete</p>
               </div>
             )}
             <div className='mb-6'>

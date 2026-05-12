@@ -1,9 +1,10 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'crypto';
 
 // JWT configuration
 const JWT_SECRET: string = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
-const JWT_EXPIRE: string = process.env.JWT_EXPIRE || '7d';
+const JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '7d';
 
 export interface TokenPayload {
   userId: string;
@@ -16,7 +17,8 @@ export interface TokenPayload {
  */
 export const generateToken = (payload: TokenPayload): string => {
   return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRE,
+    expiresIn: JWT_EXPIRES_IN,
+    jwtid: randomUUID(),
   } as any);
 };
 

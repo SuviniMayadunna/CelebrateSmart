@@ -1,7 +1,7 @@
 import React from "react"
 
 import { useState } from 'react';
-import { AppScreen, EventData } from '@/app/page';
+import { AppScreen, EventData } from '@/App';
 
 interface EventCreationScreenProps {
   onNavigate: (screen: AppScreen) => void;

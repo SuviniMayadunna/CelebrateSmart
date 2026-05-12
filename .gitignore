@@ -18,10 +18,16 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files
-.env*
+.env
+.env.*
+!.env.example
+!backend/.env.example
 .env.local
 .env.production.local
 .env.development.local
+
+# Docker
+docker-compose.override.yml
 
 # Editor directories and files
 .vscode/*

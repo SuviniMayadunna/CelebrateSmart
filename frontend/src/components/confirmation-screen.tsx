@@ -489,7 +489,7 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
 
             {/* Event Plan CTA */}
             {event && (
-              <div className='bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg p-8 text-center space-y-4'>
+              <div className='bg-gradient-to-r from-primary to-secondary text-white rounded-lg p-8 text-center space-y-4'>
                 <h2 className='text-3xl font-bold'>🎉 Your Professional Event Plan is Ready!</h2>
                 <p className='text-lg'>
                   We've created a comprehensive event plan with timeline, checklist, setup instructions, and more.
@@ -497,7 +497,7 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
                 <div className='flex flex-col sm:flex-row gap-4 justify-center pt-4'>
                   <button
                     onClick={() => setShowEventPlan(true)}
-                    className='inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-purple-600 rounded-lg font-bold hover:scale-105 transition-all shadow-lg text-lg'
+                    className='inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-primary rounded-lg font-bold hover:scale-105 transition-all shadow-lg text-lg'
                   >
                     <CheckCircle className='w-6 h-6' />
                     View Event Plan
@@ -556,7 +556,7 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
           <>
             {/* Event Plan View */}
             <div className='space-y-6'>
-              <div className='flex items-center justify-between bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg p-6'>
+              <div className='flex items-center justify-between bg-gradient-to-r from-primary to-secondary text-white rounded-lg p-6'>
                 <div>
                   <h1 className='text-3xl font-bold'>{event?.name} - Event Plan</h1>
                   <p className='text-white/90 mt-1'>Professional Event Planning Document</p>
@@ -571,7 +571,7 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
                   </button>
                   <button
                     onClick={handleDownloadPlan}
-                    className='inline-flex items-center gap-2 px-4 py-2 bg-white text-purple-600 rounded-lg font-semibold hover:scale-105 transition-all shadow-lg no-print'
+                    className='inline-flex items-center gap-2 px-4 py-2 bg-white text-primary rounded-lg font-semibold hover:scale-105 transition-all shadow-lg no-print'
                   >
                     <Download className='w-5 h-5' />
                     Download
@@ -589,26 +589,26 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
               <div className='bg-white rounded-lg shadow-lg p-8 space-y-8'>
                 {/* Event Overview */}
                 <section className='border-b pb-6'>
-                  <h2 className='text-2xl font-bold text-purple-600 mb-4 flex items-center gap-2'>
+                  <h2 className='text-2xl font-bold text-primary mb-4 flex items-center gap-2'>
                     📋 Event Overview
                   </h2>
                   <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-                    <div className='bg-purple-50 p-4 rounded-lg'>
-                      <div className='flex items-center gap-2 text-purple-600 mb-2'>
+                    <div className='bg-primary/10 p-4 rounded-lg'>
+                      <div className='flex items-center gap-2 text-primary mb-2'>
                         <Calendar className='w-5 h-5' />
                         <span className='font-bold'>Date</span>
                       </div>
                       <p className='text-lg'>{event?.date}</p>
                     </div>
-                    <div className='bg-pink-50 p-4 rounded-lg'>
-                      <div className='flex items-center gap-2 text-pink-600 mb-2'>
+                    <div className='bg-secondary/10 p-4 rounded-lg'>
+                      <div className='flex items-center gap-2 text-secondary mb-2'>
                         <Clock className='w-5 h-5' />
                         <span className='font-bold'>Time</span>
                       </div>
                       <p className='text-lg'>{event?.time}</p>
                     </div>
-                    <div className='bg-orange-50 p-4 rounded-lg'>
-                      <div className='flex items-center gap-2 text-orange-600 mb-2'>
+                    <div className='bg-accent/10 p-4 rounded-lg'>
+                      <div className='flex items-center gap-2 text-accent mb-2'>
                         <MapPin className='w-5 h-5' />
                         <span className='font-bold'>Venue</span>
                       </div>
@@ -625,7 +625,7 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
 
                 {/* Event Day Timeline */}
                 <section className='border-b pb-6'>
-                  <h2 className='text-2xl font-bold text-purple-600 mb-4'>⏰ Event Day Timeline</h2>
+                  <h2 className='text-2xl font-bold text-primary mb-4'>⏰ Event Day Timeline</h2>
                   <div className='space-y-4'>
                     <TimelineItem 
                       time={`2 Hours Before`}
@@ -686,13 +686,13 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
 
                 {/* Budget Breakdown */}
                 <section className='border-b pb-6'>
-                  <h2 className='text-2xl font-bold text-purple-600 mb-4 flex items-center gap-2'>
+                  <h2 className='text-2xl font-bold text-primary mb-4 flex items-center gap-2'>
                     <DollarSign className='w-6 h-6' />
                     Budget Breakdown
                   </h2>
                   <div className='overflow-x-auto'>
                     <table className='w-full'>
-                      <thead className='bg-purple-600 text-white'>
+                      <thead className='bg-primary text-primary-foreground'>
                         <tr>
                           <th className='text-left p-3'>Item/Service</th>
                           <th className='text-left p-3'>Category</th>
@@ -715,7 +715,7 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
                           </tr>
                         ))}
                       </tbody>
-                      <tfoot className='bg-purple-100 font-bold'>
+                      <tfoot className='bg-primary/10 font-bold'>
                         <tr>
                           <td colSpan={4} className='text-right p-3'>Subtotal:</td>
                           <td className='text-right p-3'>${subtotal.toFixed(2)}</td>
@@ -726,7 +726,7 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
                         </tr>
                         <tr className='text-lg'>
                           <td colSpan={4} className='text-right p-3'>TOTAL PAID:</td>
-                          <td className='text-right p-3 text-purple-600'>${total.toFixed(2)}</td>
+                          <td className='text-right p-3 text-primary'>${total.toFixed(2)}</td>
                         </tr>
                       </tfoot>
                     </table>
@@ -735,7 +735,7 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
 
                 {/* Checklist */}
                 <section className='border-b pb-6'>
-                  <h2 className='text-2xl font-bold text-purple-600 mb-4'>✅ Complete Planning Checklist</h2>
+                  <h2 className='text-2xl font-bold text-primary mb-4'>✅ Complete Planning Checklist</h2>
                   <div className='space-y-4'>
                     <ChecklistSection 
                       title="Completed Tasks"
@@ -757,7 +757,7 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
 
                 {/* Important Contacts */}
                 <section className='border-b pb-6'>
-                  <h2 className='text-2xl font-bold text-purple-600 mb-4'>📞 Important Contacts</h2>
+                  <h2 className='text-2xl font-bold text-primary mb-4'>📞 Important Contacts</h2>
                   <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                     <div className='p-4 bg-blue-50 rounded-lg'>
                       <p className='font-bold text-blue-900'>Venue</p>
@@ -774,17 +774,17 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
                       <p className='text-red-800'>911</p>
                       <p className='text-sm text-red-600 mt-1'>For any emergencies</p>
                     </div>
-                    <div className='p-4 bg-purple-50 rounded-lg'>
-                      <p className='font-bold text-purple-900'>Order Reference</p>
-                      <p className='text-purple-800'>{orderId}</p>
-                      <p className='text-sm text-purple-600 mt-1'>Quote for inquiries</p>
+                    <div className='p-4 bg-primary/10 rounded-lg'>
+                      <p className='font-bold text-primary'>Order Reference</p>
+                      <p className='text-foreground'>{orderId}</p>
+                      <p className='text-sm text-muted-foreground mt-1'>Quote for inquiries</p>
                     </div>
                   </div>
                 </section>
 
                 {/* Setup Instructions */}
                 <section className='border-b pb-6'>
-                  <h2 className='text-2xl font-bold text-purple-600 mb-4'>📦 Setup Instructions</h2>
+                  <h2 className='text-2xl font-bold text-primary mb-4'>📦 Setup Instructions</h2>
                   <div className='space-y-4'>
                     <div className='p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded'>
                       <p className='font-bold text-yellow-900 mb-2'>Decorations & Ambiance</p>
@@ -809,12 +809,12 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
 
                 {/* Emergency Info */}
                 <section>
-                  <div className='p-6 bg-orange-50 border-2 border-orange-300 rounded-lg'>
-                    <h3 className='font-bold text-orange-900 text-xl mb-3 flex items-center gap-2'>
+                  <div className='p-6 bg-accent/10 border-2 border-accent/30 rounded-lg'>
+                    <h3 className='font-bold text-accent text-xl mb-3 flex items-center gap-2'>
                       <AlertCircle className='w-6 h-6' />
                       Emergency Preparedness
                     </h3>
-                    <ul className='space-y-2 text-orange-800'>
+                    <ul className='space-y-2 text-foreground/90'>
                       <li className='flex items-start gap-2'>
                         <CheckCircle className='w-5 h-5 mt-1 flex-shrink-0' />
                         <span>First aid kit with event coordinator</span>
@@ -836,8 +836,8 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
                 </section>
 
                 {/* Footer */}
-                <div className='mt-8 pt-6 border-t-2 border-purple-200 text-center text-gray-600'>
-                  <p className='font-bold text-purple-600 text-lg'>CelebrateSmart Event Planning</p>
+                <div className='mt-8 pt-6 border-t-2 border-primary/20 text-center text-gray-600'>
+                  <p className='font-bold text-primary text-lg'>CelebrateSmart Event Planning</p>
                   <p className='text-sm mt-1'>Making your celebrations unforgettable</p>
                   <p className='text-xs mt-2'>Generated on {new Date().toLocaleString()}</p>
                 </div>
@@ -869,10 +869,10 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
 // Helper Components
 function TimelineItem({ time, title, tasks, highlight = false }: { time: string; title: string; tasks: string[]; highlight?: boolean }) {
   return (
-    <div className={`p-4 rounded-lg border-l-4 ${highlight ? 'bg-pink-50 border-pink-500' : 'bg-purple-50 border-purple-500'}`}>
+    <div className={`p-4 rounded-lg border-l-4 ${highlight ? 'bg-secondary/10 border-secondary' : 'bg-primary/10 border-primary'}`}>
       <div className='flex items-center gap-3 mb-2'>
-        <Clock className={`w-5 h-5 ${highlight ? 'text-pink-600' : 'text-purple-600'}`} />
-        <span className={`font-bold text-lg ${highlight ? 'text-pink-900' : 'text-purple-900'}`}>{time}</span>
+        <Clock className={`w-5 h-5 ${highlight ? 'text-secondary' : 'text-primary'}`} />
+        <span className={`font-bold text-lg ${highlight ? 'text-secondary' : 'text-primary'}`}>{time}</span>
       </div>
       <p className='font-semibold text-gray-800 mb-2'>{title}</p>
       <ul className='space-y-1 text-sm text-gray-700'>

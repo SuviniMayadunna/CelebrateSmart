@@ -1,4 +1,4 @@
-import { AppScreen, CartItem, EventData } from '@/app/page';
+import { AppScreen, CartItem, EventData } from '@/App';
 
 interface CartScreenProps {
   cart: CartItem[];

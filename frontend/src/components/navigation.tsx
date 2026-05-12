@@ -38,7 +38,7 @@ export function Navigation({ currentScreen, user, cart, onNavigate, onLogout, ad
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className='hidden md:flex fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-purple-600 via-pink-600 to-red-500 text-white shadow-2xl z-50 flex-col overflow-y-auto'>
+      <aside className='hidden md:flex fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-primary via-secondary to-accent text-white shadow-2xl z-50 flex-col overflow-y-auto'>
         {/* Logo Section */}
         <div 
           className='p-6 border-b border-white/20 cursor-pointer hover:bg-white/10 transition-colors shrink-0'
@@ -74,7 +74,7 @@ export function Navigation({ currentScreen, user, cart, onNavigate, onLogout, ad
                 }}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${
                   isActive 
-                    ? 'bg-white text-purple-600 shadow-lg font-bold' 
+                    ? 'bg-white text-primary shadow-lg font-bold' 
                     : 'hover:bg-white/10 text-white'
                 }`}
               >
@@ -90,7 +90,7 @@ export function Navigation({ currentScreen, user, cart, onNavigate, onLogout, ad
               onClick={() => onNavigate('cart')}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all relative ${
                 currentScreen === 'cart'
-                  ? 'bg-white text-purple-600 shadow-lg font-bold' 
+                  ? 'bg-white text-primary shadow-lg font-bold' 
                   : 'hover:bg-white/10 text-white'
               }`}
             >
@@ -127,7 +127,7 @@ export function Navigation({ currentScreen, user, cart, onNavigate, onLogout, ad
       </aside>
 
       {/* Mobile Top Bar */}
-      <div className='md:hidden fixed top-0 left-0 right-0 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white shadow-lg z-50'>
+      <div className='md:hidden fixed top-0 left-0 right-0 bg-gradient-to-r from-primary via-secondary to-accent text-white shadow-lg z-50'>
         <div className='flex items-center justify-between px-4 h-16'>
           <div 
             className='flex items-center space-x-2 cursor-pointer'

@@ -12,14 +12,42 @@ dotenv.config();
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
 
-// Connect to MongoDB
+// Connect to PostgreSQL via Prisma
 connectDB();
 
 // Middleware
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true,
-}));
+const configuredClientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+const allowedClientOrigins = new Set(
+  configuredClientUrl
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow non-browser tools (curl, Postman)
+      if (!origin) return callback(null, true);
+
+      // Always allow configured client origin(s)
+      if (allowedClientOrigins.has(origin)) return callback(null, true);
+
+      // Always allow localhost / loopback origins (any port)
+      try {
+        const url = new URL(origin);
+        if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '::1') {
+          return callback(null, true);
+        }
+      } catch {
+        // ignore
+      }
+
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

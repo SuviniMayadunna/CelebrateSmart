@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import prisma from '../config/database';
 import { hashPassword, comparePassword, generateToken } from '../utils/auth';
+import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
@@ -188,7 +189,7 @@ router.post(
  * @desc    Get current user profile
  * @access  Private
  */
-router.get('/me', async (req: Request, res: Response): Promise<void> => {
+router.get('/me', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     // User is attached by authenticate middleware
     if (!req.user) {

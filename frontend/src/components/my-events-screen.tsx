@@ -31,7 +31,7 @@ export function MyEventsScreen({ events, onNavigate }: MyEventsScreenProps) {
             </div>
             <button
               onClick={() => onNavigate('event-templates')}
-              className='inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold hover:scale-105 transition-all shadow-lg'
+              className='inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-xl font-bold hover:scale-105 transition-all shadow-lg'
             >
               <Plus className='w-5 h-5' />
               <span>New Event</span>
@@ -45,7 +45,7 @@ export function MyEventsScreen({ events, onNavigate }: MyEventsScreenProps) {
               <p className='text-gray-600 mb-6'>Start planning your first celebration!</p>
               <button
                 onClick={() => onNavigate('event-templates')}
-                className='inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold hover:scale-105 transition-all'
+                className='inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-xl font-bold hover:scale-105 transition-all'
               >
                 <Plus className='w-5 h-5' />
                 <span>Create Your First Event</span>
@@ -61,18 +61,18 @@ export function MyEventsScreen({ events, onNavigate }: MyEventsScreenProps) {
                     className={`group bg-white rounded-2xl p-6 hover:shadow-2xl transition-all cursor-pointer border-2 ${
                       isCompleted 
                         ? 'border-green-300 hover:border-green-500' 
-                        : 'border-gray-100 hover:border-purple-300'
+                        : 'border-gray-100 hover:border-primary/30'
                     }`}
                     onClick={() => handleEventClick(event)}
                   >
                   <div className='flex items-start justify-between mb-4'>
                     <div className='flex-1'>
-                      <h3 className='text-xl font-bold text-gray-800 mb-1 group-hover:text-purple-600 transition-colors'>
+                      <h3 className='text-xl font-bold text-gray-800 mb-1 group-hover:text-primary transition-colors'>
                         {event.name}
                       </h3>
                       <p className='text-sm text-gray-500 capitalize font-medium'>{event.type}</p>
                     </div>
-                    <div className='w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-white text-xl'>
+                    <div className='w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center text-white text-xl'>
                       
                     </div>
                   </div>
@@ -100,7 +100,7 @@ export function MyEventsScreen({ events, onNavigate }: MyEventsScreenProps) {
                       <span className={`text-sm font-bold ${
                         isCompleted 
                           ? 'text-green-600 flex items-center gap-1' 
-                          : 'text-purple-600'
+                          : 'text-primary'
                       }`}>
                         {isCompleted ? (
                           <>

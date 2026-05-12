@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { AppScreen, User } from '@/App';
 
 interface AdminDashboardProps {
@@ -9,8 +8,7 @@ interface AdminDashboardProps {
   onAdminTabChange: (tab: string) => void;
 }
 
-export function AdminDashboard({ user, adminTab, onAdminTabChange }: AdminDashboardProps) {
-  const [newProduct, setNewProduct] = useState({ name: '', price: '', category: '' });
+export function AdminDashboard({ adminTab }: AdminDashboardProps) {
 
   const mockStats = {
     totalCustomers: 156,

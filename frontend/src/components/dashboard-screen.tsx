@@ -1,5 +1,5 @@
 import { AppScreen, User, EventData } from '@/App';
-import { Calendar, Clock, MapPin, Plus, TrendingUp, PartyPopper, CheckCircle } from 'lucide-react';
+import { Calendar, Clock, MapPin, Plus, TrendingUp, CheckCircle } from 'lucide-react';
 
 interface DashboardScreenProps {
   user: User | null;
@@ -29,22 +29,22 @@ export function DashboardScreen({ user, events, onNavigate }: DashboardScreenPro
               label: 'Total Events', 
               value: events.length, 
               icon: Calendar,
-              gradient: 'from-purple-500 to-purple-600',
-              bg: 'bg-purple-100'
+              gradient: 'from-primary to-secondary',
+              bg: 'bg-primary/10'
             },
             { 
               label: 'In Progress', 
               value: events.length - completedEvents, 
               icon: TrendingUp,
-              gradient: 'from-pink-500 to-pink-600',
-              bg: 'bg-pink-100'
+              gradient: 'from-secondary to-accent',
+              bg: 'bg-secondary/10'
             },
             { 
               label: 'Completed', 
               value: completedEvents, 
               icon: CheckCircle,
-              gradient: 'from-orange-500 to-orange-600',
-              bg: 'bg-orange-100'
+              gradient: 'from-accent to-primary',
+              bg: 'bg-accent/10'
             },
           ].map((stat) => {
             const Icon = stat.icon;
@@ -71,7 +71,7 @@ export function DashboardScreen({ user, events, onNavigate }: DashboardScreenPro
             <h2 className='text-3xl font-bold text-gray-800'>Your Events</h2>
             <button
               onClick={() => onNavigate('event-templates')}
-              className='flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold hover:scale-105 transition-all shadow-lg'
+              className='flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-xl font-bold hover:scale-105 transition-all shadow-lg'
             >
               <Plus className='w-5 h-5' />
               <span>New Event</span>
@@ -84,7 +84,7 @@ export function DashboardScreen({ user, events, onNavigate }: DashboardScreenPro
               <p className='text-gray-600 mb-6'>Start planning your first celebration!</p>
               <button
                 onClick={() => onNavigate('event-templates')}
-                className='inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold hover:scale-105 transition-all'
+                className='inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-xl font-bold hover:scale-105 transition-all'
               >
                 <Plus className='w-5 h-5' />
                 <span>Create Your First Event</span>
@@ -95,17 +95,17 @@ export function DashboardScreen({ user, events, onNavigate }: DashboardScreenPro
               {events.map((event) => (
                 <div 
                   key={event.id} 
-                  className='group bg-white rounded-2xl p-6 hover:shadow-2xl transition-all cursor-pointer border-2 border-gray-100 hover:border-purple-300'
+                  className='group bg-white rounded-2xl p-6 hover:shadow-2xl transition-all cursor-pointer border-2 border-gray-100 hover:border-primary/30'
                   onClick={() => onNavigate('event-planning', event)}
                 >
                   <div className='flex items-start justify-between mb-4'>
                     <div className='flex-1'>
-                      <h3 className='text-xl font-bold text-gray-800 mb-1 group-hover:text-purple-600 transition-colors'>
+                      <h3 className='text-xl font-bold text-gray-800 mb-1 group-hover:text-primary transition-colors'>
                         {event.name}
                       </h3>
                       <p className='text-sm text-gray-500 capitalize font-medium'>{event.type}</p>
                     </div>
-                    <div className='w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-white text-xl'>
+                    <div className='w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center text-white text-xl'>
                       
                     </div>
                   </div>
@@ -128,7 +128,7 @@ export function DashboardScreen({ user, events, onNavigate }: DashboardScreenPro
                   <div className='pt-4 border-t border-gray-100'>
                     <div className='flex items-center justify-between'>
                       <span className='text-sm text-gray-600'>Progress</span>
-                      <span className='text-sm font-bold text-purple-600'>
+                      <span className='text-sm font-bold text-primary'>
                         {event.completedTasks.length} tasks done
                       </span>
                     </div>

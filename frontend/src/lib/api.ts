@@ -45,15 +45,15 @@ export interface UserResponse {
 
 // Token management
 export const setAuthToken = (token: string) => {
-  localStorage.setItem('token', token);
+  sessionStorage.setItem('token', token);
 };
 
 export const getAuthToken = (): string | null => {
-  return localStorage.getItem('token');
+  return sessionStorage.getItem('token');
 };
 
 export const removeAuthToken = () => {
-  localStorage.removeItem('token');
+  sessionStorage.removeItem('token');
 };
 
 // API helper function
@@ -63,13 +63,13 @@ async function apiRequest<T>(
 ): Promise<T> {
   const token = getAuthToken();
   
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  };
-
+  const headers = new Headers(options.headers);
+  // Ensure JSON requests by default
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers.set('Authorization', `Bearer ${token}`);
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -97,7 +97,7 @@ export const authAPI = {
       body: JSON.stringify(data),
     });
     
-    // Save token to localStorage
+    // Save token for this browser tab
     if (response.success && response.data.token) {
       setAuthToken(response.data.token);
     }
@@ -114,7 +114,7 @@ export const authAPI = {
       body: JSON.stringify(data),
     });
     
-    // Save token to localStorage
+    // Save token for this browser tab
     if (response.success && response.data.token) {
       setAuthToken(response.data.token);
     }

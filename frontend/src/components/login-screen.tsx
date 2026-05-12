@@ -6,9 +6,11 @@ import { Mail, Lock, ArrowLeft, User, Shield } from 'lucide-react';
 interface LoginScreenProps {
   onLogin: (email: string, password: string, role: 'customer' | 'admin') => void;
   onNavigate: (screen: AppScreen) => void;
+  isLoading?: boolean;
+  error?: string | null;
 }
 
-export function LoginScreen({ onLogin, onNavigate }: LoginScreenProps) {
+export function LoginScreen({ onLogin, onNavigate, isLoading = false, error }: LoginScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'customer' | 'admin'>('customer');
@@ -22,11 +24,11 @@ export function LoginScreen({ onLogin, onNavigate }: LoginScreenProps) {
   };
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 relative overflow-hidden flex items-center justify-center px-4'>
+    <div className='min-h-screen bg-gradient-to-br from-primary via-secondary to-accent relative overflow-hidden flex items-center justify-center px-4'>
       {/* Background decoration */}
       <div className='absolute inset-0 overflow-hidden'>
         <div className='absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl'></div>
-        <div className='absolute bottom-0 -left-40 w-96 h-96 bg-purple-300/20 rounded-full blur-3xl'></div>
+        <div className='absolute bottom-0 -left-40 w-96 h-96 bg-secondary/20 rounded-full blur-3xl'></div>
       </div>
 
       <div className='relative z-10 max-w-md w-full'>
@@ -57,7 +59,7 @@ export function LoginScreen({ onLogin, onNavigate }: LoginScreenProps) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder='you@example.com'
-                  className='w-full pl-12 pr-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-colors bg-gray-50 focus:bg-white'
+                  className='w-full pl-12 pr-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary focus:outline-none transition-colors bg-gray-50 focus:bg-white'
                   required
                 />
               </div>
@@ -73,7 +75,7 @@ export function LoginScreen({ onLogin, onNavigate }: LoginScreenProps) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder='••••••••'
-                  className='w-full pl-12 pr-12 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-colors bg-gray-50 focus:bg-white'
+                  className='w-full pl-12 pr-12 py-3 rounded-xl border-2 border-gray-200 focus:border-primary focus:outline-none transition-colors bg-gray-50 focus:bg-white'
                   required
                 />
                 <button
@@ -91,8 +93,8 @@ export function LoginScreen({ onLogin, onNavigate }: LoginScreenProps) {
               <label className='block text-sm font-bold text-gray-700 mb-3'>Login As</label>
               <div className='grid grid-cols-2 gap-3'>
                 {[
-                  { value: 'customer' as const, icon: User, label: 'Customer', color: 'purple' },
-                  { value: 'admin' as const, icon: Shield, label: 'Admin', color: 'pink' }
+                  { value: 'customer' as const, icon: User, label: 'Customer' },
+                  { value: 'admin' as const, icon: Shield, label: 'Admin' }
                 ].map((r) => {
                   const Icon = r.icon;
                   const isSelected = role === r.value;
@@ -101,7 +103,7 @@ export function LoginScreen({ onLogin, onNavigate }: LoginScreenProps) {
                       key={r.value} 
                       className={`cursor-pointer rounded-xl p-4 border-2 transition-all ${
                         isSelected 
-                          ? `border-${r.color}-500 bg-${r.color}-50` 
+                          ? 'border-primary bg-primary/10'
                           : 'border-gray-200 hover:border-gray-300 bg-gray-50'
                       }`}
                     >
@@ -112,8 +114,8 @@ export function LoginScreen({ onLogin, onNavigate }: LoginScreenProps) {
                         className='sr-only'
                       />
                       <div className='flex flex-col items-center space-y-2'>
-                        <Icon className={`w-6 h-6 ${isSelected ? `text-${r.color}-600` : 'text-gray-400'}`} />
-                        <span className={`font-bold text-sm ${isSelected ? `text-${r.color}-600` : 'text-gray-600'}`}>
+                        <Icon className={`w-6 h-6 ${isSelected ? 'text-primary' : 'text-gray-400'}`} />
+                        <span className={`font-bold text-sm ${isSelected ? 'text-primary' : 'text-gray-600'}`}>
                           {r.label}
                         </span>
                       </div>
@@ -123,12 +125,23 @@ export function LoginScreen({ onLogin, onNavigate }: LoginScreenProps) {
               </div>
             </div>
 
+            {/* API Error */}
+            {error && (
+              <div className='p-3 bg-red-50 border border-red-200 rounded-lg'>
+                <p className='text-sm text-red-600 font-medium'>{error}</p>
+              </div>
+            )}
+
             {/* Submit Button */}
             <button
               type='submit'
-              className='w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold hover:scale-105 transition-all shadow-lg text-lg'
+              disabled={isLoading}
+              className='w-full py-4 bg-gradient-to-r from-primary to-secondary text-white rounded-xl font-bold hover:scale-105 transition-all shadow-lg text-lg disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2'
             >
-              Sign In
+              {isLoading && (
+                <span className='w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin' />
+              )}
+              {isLoading ? 'Signing In…' : 'Sign In'}
             </button>
           </form>
 
@@ -138,7 +151,7 @@ export function LoginScreen({ onLogin, onNavigate }: LoginScreenProps) {
               Don't have an account?{' '}
               <button
                 onClick={() => onNavigate('register')}
-                className='text-purple-600 font-bold hover:text-purple-700 transition-colors'
+                className='text-primary font-bold hover:text-primary/90 transition-colors'
               >
                 Create Account
               </button>
