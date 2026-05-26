@@ -17,12 +17,13 @@ interface ConfirmationScreenProps {
   onNavigate: (screen: AppScreen) => void;
   cart: CartItem[];
   event: EventData | null;
+  orderId?: string;
 }
 
-export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScreenProps) {
+export function ConfirmationScreen({ onNavigate, cart, event, orderId: orderIdProp }: ConfirmationScreenProps) {
   const [showEventPlan, setShowEventPlan] = useState(false);
-  const orderId = Math.random().toString(36).substring(7).toUpperCase();
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const orderId = orderIdProp || '—';
+  const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const tax = subtotal * 0.1;
   const total = subtotal + tax;
 
@@ -252,11 +253,11 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
       <tbody>
         ${cart.map(item => `
           <tr>
-            <td>${item.image} ${item.name}</td>
-            <td>${item.category}</td>
+            <td>${item.product.imageUrl || ''} ${item.product.name}</td>
+            <td>${item.product.category}</td>
             <td>${item.quantity}</td>
-            <td>$${item.price.toFixed(2)}</td>
-            <td>$${(item.price * item.quantity).toFixed(2)}</td>
+            <td>$${item.product.price.toFixed(2)}</td>
+            <td>$${(item.product.price * item.quantity).toFixed(2)}</td>
           </tr>
         `).join('')}
       </tbody>
@@ -472,13 +473,13 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
                   {cart.map(item => (
                     <div key={item.id} className='flex justify-between items-center'>
                       <div className='flex items-center gap-3'>
-                        <span className='text-2xl'>{item.image || '🛍️'}</span>
+                        <span className='text-2xl'>{item.product.imageUrl || '🛍️'}</span>
                         <div>
-                          <p className='font-semibold'>{item.name}</p>
+                          <p className='font-semibold'>{item.product.name}</p>
                           <p className='text-xs text-muted-foreground'>Qty: {item.quantity}</p>
                         </div>
                       </div>
-                      <span className='font-semibold'>${(item.price * item.quantity).toFixed(2)}</span>
+                      <span className='font-semibold'>${(item.product.price * item.quantity).toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
@@ -745,13 +746,13 @@ export function ConfirmationScreen({ onNavigate, cart, event }: ConfirmationScre
                         {cart.map((item, idx) => (
                           <tr key={item.id} className={idx % 2 === 0 ? 'bg-muted/40' : 'bg-background'}>
                             <td className='p-3'>
-                              <span className='mr-2'>{item.image}</span>
-                              {item.name}
+                              <span className='mr-2'>{item.product.imageUrl || '🛍️'}</span>
+                              {item.product.name}
                             </td>
-                            <td className='p-3'>{item.category}</td>
+                            <td className='p-3'>{item.product.category}</td>
                             <td className='text-center p-3'>{item.quantity}</td>
-                            <td className='text-right p-3'>${item.price.toFixed(2)}</td>
-                            <td className='text-right p-3 font-semibold'>${(item.price * item.quantity).toFixed(2)}</td>
+                            <td className='text-right p-3'>${item.product.price.toFixed(2)}</td>
+                            <td className='text-right p-3 font-semibold'>${(item.product.price * item.quantity).toFixed(2)}</td>
                           </tr>
                         ))}
                       </tbody>

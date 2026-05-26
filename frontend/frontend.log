@@ -1,0 +1,96 @@
+
+> celebrate-smart-app@0.1.0 dev
+> vite
+
+
+  [32m[1mVITE[22m v6.4.1[39m  [2mready in [0m[1m435[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[2m5:48:20 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css, /src/context/AuthContext.tsx, /src/components/profile-screen.tsx, /src/components/package-picker-screen.tsx, /src/components/login-screen.tsx, /src/components/navigation.tsx, /src/components/my-orders-screen.tsx, /src/components/event-template-screen.tsx, /src/components/shop-screen.tsx, /src/components/checkout-screen.tsx, /src/components/event-plan-screen.tsx, /src/components/package-customizer-screen.tsx, /src/components/admin-dashboard.tsx[22m
+[2m5:48:20 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/my-orders-screen.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/admin-dashboard.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/cart-screen.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/checkout-screen.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/confirmation-screen.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/event-creation-screen.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/event-plan-viewer.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/event-planning-screen.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/event-template-screen.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/login-screen.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/my-events-screen.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/navigation.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/confirmation-screen.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/dashboard-screen.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/confirmation-screen.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/dashboard-screen.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/context/AuthContext.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css, /src/context/AuthContext.tsx, /src/components/profile-screen.tsx, /src/components/package-picker-screen.tsx, /src/components/login-screen.tsx, /src/components/navigation.tsx, /src/components/my-orders-screen.tsx, /src/components/event-template-screen.tsx, /src/components/shop-screen.tsx, /src/components/checkout-screen.tsx, /src/components/event-plan-screen.tsx, /src/components/package-customizer-screen.tsx, /src/components/admin-dashboard.tsx[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/registration-screen.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/shop-screen.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/welcome-screen.tsx, /src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m6:14:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/main.tsx[22m
+[2m6:22:12 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css, /src/context/AuthContext.tsx, /src/components/profile-screen.tsx, /src/components/package-picker-screen.tsx, /src/components/login-screen.tsx, /src/components/navigation.tsx, /src/components/my-orders-screen.tsx, /src/components/event-template-screen.tsx, /src/components/shop-screen.tsx, /src/components/checkout-screen.tsx, /src/components/event-plan-screen.tsx, /src/components/package-customizer-screen.tsx, /src/components/admin-dashboard.tsx[22m
+[2m6:22:12 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/admin-dashboard.tsx, /src/index.css[22m
+[2m6:22:12 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/my-orders-screen.tsx, /src/index.css[22m
+[2m6:22:12 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/navigation.tsx, /src/index.css[22m
+[2m6:22:12 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m6:22:52 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css, /src/context/AuthContext.tsx, /src/components/profile-screen.tsx, /src/components/package-picker-screen.tsx, /src/components/login-screen.tsx, /src/components/navigation.tsx, /src/components/my-orders-screen.tsx, /src/components/event-template-screen.tsx, /src/components/shop-screen.tsx, /src/components/checkout-screen.tsx, /src/components/event-plan-screen.tsx, /src/components/package-customizer-screen.tsx, /src/components/admin-dashboard.tsx[22m
+[2m6:22:52 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/my-orders-screen.tsx, /src/index.css[22m
+[2m6:42:09 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css, /src/context/AuthContext.tsx, /src/components/profile-screen.tsx, /src/components/package-picker-screen.tsx, /src/components/login-screen.tsx, /src/components/navigation.tsx, /src/components/my-orders-screen.tsx, /src/components/event-template-screen.tsx, /src/components/shop-screen.tsx, /src/components/checkout-screen.tsx, /src/components/event-plan-screen.tsx, /src/components/package-customizer-screen.tsx, /src/components/admin-dashboard.tsx[22m
+[2m6:42:24 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m6:42:37 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m6:43:48 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m6:49:24 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m6:50:05 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m6:50:57 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m6:51:55 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/login-screen.tsx, /src/index.css[22m
+[2m6:53:18 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/shop-screen.tsx, /src/index.css[22m
+[2m6:53:53 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/dashboard-screen.tsx, /src/index.css[22m
+[2m6:54:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/checkout-screen.tsx, /src/index.css[22m
+[2m6:54:45 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/checkout-screen.tsx, /src/index.css[22m
+[2m6:55:33 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/checkout-screen.tsx, /src/index.css[22m
+[2m6:56:26 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/checkout-screen.tsx, /src/index.css[22m
+[2m6:57:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/confirmation-screen.tsx, /src/index.css[22m
+[2m6:58:14 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/confirmation-screen.tsx, /src/index.css[22m
+[2m6:58:32 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/confirmation-screen.tsx, /src/index.css[22m
+[2m6:58:54 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/confirmation-screen.tsx, /src/index.css[22m
+[2m6:59:57 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/cart-screen.tsx, /src/index.css[22m
+[2m7:00:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/cart-screen.tsx, /src/index.css[22m
+[2m7:00:36 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/cart-screen.tsx, /src/index.css[22m
+[2m7:01:08 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/navigation.tsx, /src/index.css[22m
+[2m7:01:44 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m7:02:24 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m7:03:24 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m7:04:38 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m7:17:06 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m7:17:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m7:23:34 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/context/AuthContext.tsx, /src/index.css[22m
+[2m7:23:38 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/context/AuthContext.tsx, /src/index.css[22m
+[2m7:27:40 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m7:57:57 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/main.tsx[22m
+[2m8:10:13 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m8:34:51 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m8:43:02 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/welcome-screen.tsx, /src/index.css[22m
+[2m9:03:57 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m9:04:05 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m9:04:12 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m9:04:21 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m9:04:31 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m9:04:39 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m9:05:17 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/my-events-screen.tsx, /src/index.css[22m
+[2m9:06:23 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/dashboard-screen.tsx, /src/index.css[22m
+[2m9:14:39 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32m✨ new dependencies optimized: [33m@radix-ui/react-separator, @radix-ui/react-progress[32m[39m
+[2m9:14:39 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32m✨ optimized dependencies changed. reloading[39m
+[2m9:18:56 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/navigation.tsx, /src/index.css[22m
+[2m9:20:16 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/event-plan-screen.tsx, /src/index.css[22m
+[2m9:22:27 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/event-plan-screen.tsx, /src/index.css[22m
+[2m9:23:34 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/event-plan-screen.tsx, /src/index.css[22m
+[2m9:23:57 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/event-plan-screen.tsx, /src/index.css[22m
+[2m9:35:01 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/login-screen.tsx, /src/index.css[22m
+[2m9:35:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/login-screen.tsx, /src/index.css[22m
+[2m9:35:30 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/login-screen.tsx, /src/index.css[22m
+[2m9:35:44 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/login-screen.tsx, /src/index.css[22m
+[2m9:36:02 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/login-screen.tsx, /src/index.css[22m

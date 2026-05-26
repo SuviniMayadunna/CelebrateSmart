@@ -10,44 +10,79 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  phone     String
-  role      Role     @default(CUSTOMER)
-  events    Event[]
-  cartItems CartItem[]
-  orders    Order[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String         @id @default(uuid())
+  name          String
+  email         String         @unique
+  password      String
+  phone         String
+  role          Role           @default(CUSTOMER)
+  events        Event[]
+  cartItems     CartItem[]
+  orders        Order[]
+  notifications Notification[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@index([email])
   @@map("users")
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  title     String
+  content   String
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model NotificationBroadcast {
+  id             String   @id @default(uuid())
+  title          String
+  content        String
+  recipientType  String
+  recipientCount Int
+  sentBy         String
+  createdAt      DateTime @default(now())
+
+  @@map("notification_broadcasts")
 }
 
 model Event {
   id           String      @id @default(uuid())
   userId       String
   templateId   String?
+  packageId    String?
   name         String
   type         String
   date         DateTime
   time         String
   venue        String
   venueBooked  String?
+  guestCount   Int?
   notes        String?
+  colorTheme   String?
   status       EventStatus @default(DRAFT)
   user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   template     Template?   @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  package      Package?    @relation(fields: [packageId], references: [id], onDelete: SetNull)
   tasks        EventTask[]
   cartItems    CartItem[]
   orders       Order[]
+  plan         EventPlan?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
   @@index([userId])
   @@index([templateId])
+  @@index([packageId])
   @@map("events")
 }
 
@@ -109,11 +144,91 @@ model Product {
   isActive     Boolean         @default(true)
   cartItems    CartItem[]
   orderItems   OrderItem[]
+  packageItems PackageItem[]
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
   @@index([category])
   @@map("products")
+}
+
+model Package {
+  id          String         @id @default(uuid())
+  name        String
+  eventType   String
+  tier        PackageTier
+  description String
+  highlights  String[]
+  isActive    Boolean        @default(true)
+  items       PackageItem[]
+  photos      PackagePhoto[]
+  events      Event[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([eventType, tier])
+  @@index([eventType])
+  @@map("packages")
+}
+
+model PackagePhoto {
+  id        String   @id @default(uuid())
+  packageId String
+  url       String
+  publicId  String
+  caption   String?
+  sortOrder Int      @default(0)
+  package   Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([packageId])
+  @@map("package_photos")
+}
+
+model PackageItem {
+  id        String   @id @default(uuid())
+  packageId String
+  productId String
+  quantity  Int      @default(1)
+  isCore    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  package   Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([packageId])
+  @@map("package_items")
+}
+
+model EventPlan {
+  id        String          @id @default(uuid())
+  eventId   String          @unique
+  event     Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  steps     EventPlanStep[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@map("event_plans")
+}
+
+model EventPlanStep {
+  id          String    @id @default(uuid())
+  planId      String
+  weeksBefore Int
+  timeOfDay   String?
+  title       String
+  description String?
+  category    String?
+  isCompleted Boolean   @default(false)
+  completedAt DateTime?
+  sortOrder   Int
+  plan        EventPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([planId])
+  @@map("event_plan_steps")
 }
 
 model CartItem {
@@ -136,15 +251,16 @@ model CartItem {
 }
 
 model Order {
-  id            String       @id @default(uuid())
-  userId        String
-  eventId       String?
-  orderNumber   String       @unique @default(cuid())
-  status        OrderStatus  @default(PENDING_PAYMENT)
-  totalAmount   Decimal      @db.Decimal(10, 2)
-  currency      String       @default("usd")
-  paymentStatus PaymentState @default(PENDING)
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String       @id @default(uuid())
+  userId          String
+  eventId         String?
+  orderNumber     String       @unique @default(cuid())
+  status          OrderStatus  @default(PENDING_PAYMENT)
+  totalAmount     Decimal      @db.Decimal(10, 2)
+  currency        String       @default("usd")
+  paymentStatus   PaymentState @default(PENDING)
+  deliveryAddress String?
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   event         Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
   items         OrderItem[]
   payment       Payment?
@@ -192,6 +308,12 @@ model Payment {
   @@map("payments")
 }
 
+enum PackageTier {
+  BRONZE
+  SILVER
+  GOLD
+}
+
 enum Role {
   CUSTOMER
   ADMIN
@@ -233,8 +355,10 @@ enum ProductCategory {
 enum OrderStatus {
   PENDING_PAYMENT
   PAID
-  PROCESSING
-  COMPLETED
+  PREPARING
+  READY_FOR_PICKUP
+  OUT_FOR_DELIVERY
+  DELIVERED
   CANCELED
 }
 

@@ -1,5 +1,5 @@
 import { AppScreen, EventData } from '@/App';
-import { Calendar, Clock, MapPin, Plus, CheckCircle } from 'lucide-react';
+import { Calendar, Clock, MapPin, Plus, Users } from 'lucide-react';
 import {
   Empty,
   EmptyContent,
@@ -15,15 +15,23 @@ interface MyEventsScreenProps {
   onNavigate: (screen: AppScreen, event?: EventData) => void;
 }
 
-export function MyEventsScreen({ events, onNavigate }: MyEventsScreenProps) {
-  const TOTAL_PLANNING_STEPS = 6; // Total number of planning tasks
+const EVENT_EMOJIS: Record<string, string> = {
+  BIRTHDAY: '🎂', WEDDING: '💒', PROPOSAL: '💍', BABY_SHOWER: '🍼', KIDS_PARTY: '🎈',
+};
 
+const TYPE_COLORS: Record<string, string> = {
+  BIRTHDAY:    'hsl(43,74%,49%)',
+  WEDDING:     'hsl(330,65%,55%)',
+  PROPOSAL:    'hsl(330,50%,60%)',
+  BABY_SHOWER: 'hsl(200,65%,55%)',
+  KIDS_PARTY:  'hsl(280,60%,58%)',
+};
+
+export function MyEventsScreen({ events, onNavigate }: MyEventsScreenProps) {
   const handleEventClick = (event: EventData) => {
-    // If all tasks are completed, show the event plan viewer
-    if (event.completedTasks.length === TOTAL_PLANNING_STEPS) {
-      onNavigate('event-plan-viewer', event);
+    if (event.hasPaidOrder) {
+      onNavigate('event-plan', event);
     } else {
-      // Otherwise, continue with event planning
       onNavigate('event-planning', event);
     }
   };
@@ -35,8 +43,11 @@ export function MyEventsScreen({ events, onNavigate }: MyEventsScreenProps) {
           {/* Header */}
           <div className='flex items-center justify-between'>
             <div>
-              <h1 className='text-4xl font-black text-foreground mb-2'>My Events</h1>
-              <p className='text-muted-foreground text-lg'>Manage your celebrations</p>
+              <p className='text-xs uppercase tracking-widest font-semibold mb-1'
+                style={{ color: 'hsl(155,22%,46%)', fontFamily: 'Inter, sans-serif' }}>
+                Your Celebrations
+              </p>
+              <h1 className='text-4xl font-black text-foreground'>My Events</h1>
             </div>
             <Button onClick={() => onNavigate('event-templates')} className='font-bold'>
               <Plus className='w-5 h-5' />
@@ -64,68 +75,105 @@ export function MyEventsScreen({ events, onNavigate }: MyEventsScreenProps) {
           ) : (
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
               {events.map((event) => {
-                const isCompleted = event.completedTasks.length === TOTAL_PLANNING_STEPS;
+                const isPaid      = event.hasPaidOrder === true;
+                const accentColor = TYPE_COLORS[event.type] ?? 'hsl(155,42%,20%)';
+                const totalSteps  = event.planStepsTotal ?? 0;
+                const doneSteps   = event.planStepsDone ?? 0;
+                const progressPct = totalSteps > 0 ? Math.round(doneSteps / totalSteps * 100) : 0;
+
                 return (
-                  <div 
-                    key={event.id} 
-                    className={`group bg-card rounded-2xl p-6 hover:shadow-lg transition-all cursor-pointer border ${
-                      isCompleted 
-                        ? 'border-green-300 hover:border-green-500' 
-                        : 'border-border hover:border-primary/30'
-                    }`}
+                  <div
+                    key={event.id}
                     onClick={() => handleEventClick(event)}
+                    className='group bg-white rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5'
+                    style={{ border: '1px solid hsl(150,12%,88%)' }}
                   >
-                  <div className='flex items-start justify-between mb-4'>
-                    <div className='flex-1'>
-                      <h3 className='text-xl font-bold text-foreground mb-1 group-hover:text-primary transition-colors'>
+                    {/* Colored top accent */}
+                    <div className='h-1.5' style={{
+                      background: isPaid
+                        ? `linear-gradient(90deg, ${accentColor}, hsl(43,74%,65%))`
+                        : 'linear-gradient(90deg, hsl(155,42%,20%), hsl(155,33%,35%))',
+                    }} />
+
+                    <div className='p-5'>
+                      {/* Badges row */}
+                      <div className='flex items-center gap-2 mb-3 flex-wrap'>
+                        <span className='text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wide'
+                          style={{
+                            background: `${accentColor}22`,
+                            color: accentColor,
+                            fontFamily: 'Inter, sans-serif',
+                          }}>
+                          {EVENT_EMOJIS[event.type] ?? '🎉'} {event.type.replace(/_/g, ' ')}
+                        </span>
+                        {isPaid && (
+                          <span className='text-xs font-bold px-2.5 py-0.5 rounded-full'
+                            style={{ background: 'hsl(142,60%,94%)', color: 'hsl(142,65%,22%)', fontFamily: 'Inter, sans-serif' }}>
+                            ✓ Paid
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Event name */}
+                      <h3 className='text-lg font-bold mb-3 group-hover:text-primary transition-colors line-clamp-1'
+                        style={{ color: 'hsl(155,45%,13%)', fontFamily: 'Inter, sans-serif' }}>
                         {event.name}
                       </h3>
-                      <p className='text-sm text-muted-foreground capitalize font-medium'>{event.type}</p>
-                    </div>
-                    <div className='w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center text-white text-xl'>
-                      
-                    </div>
-                  </div>
-                  
-                  <div className='space-y-2 mb-4'>
-                    <div className='flex items-center space-x-2 text-muted-foreground'>
-                      <Calendar className='w-4 h-4' />
-                      <span className='text-sm'>{event.date}</span>
-                    </div>
-                    <div className='flex items-center space-x-2 text-muted-foreground'>
-                      <Clock className='w-4 h-4' />
-                      <span className='text-sm'>{event.time}</span>
-                    </div>
-                    <div className='flex items-center space-x-2 text-muted-foreground'>
-                      <MapPin className='w-4 h-4' />
-                      <span className='text-sm'>{event.venue}</span>
-                    </div>
-                  </div>
-                  
-                  <div className='pt-4 border-t border-gray-100'>
-                    <div className='flex items-center justify-between'>
-                      <span className='text-sm text-muted-foreground'>
-                        {isCompleted ? 'Status' : 'Progress'}
-                      </span>
-                      <span className={`text-sm font-bold ${
-                        isCompleted 
-                          ? 'text-green-600 flex items-center gap-1' 
-                          : 'text-primary'
-                      }`}>
-                        {isCompleted ? (
-                          <>
-                            <CheckCircle className='w-4 h-4' />
-                            Completed
-                          </>
-                        ) : (
-                          `${event.completedTasks.length} tasks done`
+
+                      {/* Details */}
+                      <div className='space-y-1.5 mb-4'>
+                        <div className='flex items-center gap-2 text-sm' style={{ color: 'hsl(150,8%,48%)', fontFamily: 'Inter, sans-serif' }}>
+                          <Calendar className='w-3.5 h-3.5 shrink-0' style={{ color: 'hsl(155,22%,46%)' }} />
+                          <span>{event.date}</span>
+                          <span className='opacity-30'>·</span>
+                          <Clock className='w-3.5 h-3.5 shrink-0' style={{ color: 'hsl(155,22%,46%)' }} />
+                          <span>{event.time}</span>
+                        </div>
+                        {event.venue && event.venue !== 'To be determined' && (
+                          <div className='flex items-center gap-2 text-sm' style={{ color: 'hsl(150,8%,48%)', fontFamily: 'Inter, sans-serif' }}>
+                            <MapPin className='w-3.5 h-3.5 shrink-0' style={{ color: 'hsl(155,22%,46%)' }} />
+                            <span className='truncate'>{event.venue}</span>
+                          </div>
                         )}
-                      </span>
+                        {event.guestCount != null && (
+                          <div className='flex items-center gap-2 text-sm' style={{ color: 'hsl(150,8%,48%)', fontFamily: 'Inter, sans-serif' }}>
+                            <Users className='w-3.5 h-3.5 shrink-0' style={{ color: 'hsl(155,22%,46%)' }} />
+                            <span>{event.guestCount} guests</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className='pt-3 border-t' style={{ borderColor: 'hsl(150,12%,92%)' }}>
+                        <div className='flex items-center justify-between mb-1.5'>
+                          <span className='text-xs font-semibold uppercase tracking-wide'
+                            style={{ color: 'hsl(150,8%,55%)', fontFamily: 'Inter, sans-serif' }}>
+                            PROGRESS
+                          </span>
+                          <span className='text-xs font-bold'
+                            style={{
+                              color: isPaid ? 'hsl(155,38%,27%)' : 'hsl(155,22%,46%)',
+                              fontFamily: 'Inter, sans-serif',
+                            }}>
+                            {totalSteps > 0 ? `${progressPct}%` : (isPaid ? 'Active' : 'Planning')}
+                          </span>
+                        </div>
+                        <div className='h-1.5 rounded-full overflow-hidden' style={{ background: 'hsl(150,12%,90%)' }}>
+                          <div
+                            className='h-full rounded-full transition-all duration-500'
+                            style={{
+                              width: `${progressPct > 0 ? progressPct : (isPaid ? 15 : 5)}%`,
+                              background: isPaid
+                                ? `linear-gradient(90deg, ${accentColor}, hsl(43,60%,62%))`
+                                : 'linear-gradient(90deg, hsl(155,42%,20%), hsl(155,33%,38%))',
+                            }}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
             </div>
           )}
         </div>

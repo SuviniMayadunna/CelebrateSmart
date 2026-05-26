@@ -4,7 +4,17 @@ import dotenv from 'dotenv';
 import { connectDB, disconnectDB } from './config/database';
 import authRoutes from './routes/auth';
 import adminRoutes from './routes/admin';
+import eventRoutes from './routes/events';
+import productRoutes from './routes/products';
+import cartRoutes from './routes/cart';
+import orderRoutes from './routes/orders';
+import notificationRoutes from './routes/notifications';
+import templateRoutes from './routes/templates';
+import packageRoutes from './routes/packages';
+import stripeWebhookRoutes from './routes/stripe-webhook';
 import { authenticate, requireAdmin } from './middleware/auth';
+import { startNotificationWorker } from './workers/notification-worker';
+import { startReminderScheduler } from './workers/reminder-scheduler';
 
 // Load environment variables
 dotenv.config();
@@ -49,6 +59,9 @@ app.use(
     credentials: true,
   })
 );
+// Stripe webhook must receive raw body — register BEFORE express.json()
+app.use('/api/stripe', stripeWebhookRoutes);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -63,6 +76,15 @@ app.use('/api/auth', authRoutes);
 
 // Admin routes (requires authentication + admin role)
 app.use('/api/admin', authenticate, requireAdmin, adminRoutes);
+
+// Customer routes (require authentication)
+app.use('/api/events',        authenticate, eventRoutes);
+app.use('/api/products',      authenticate, productRoutes);
+app.use('/api/cart',          authenticate, cartRoutes);
+app.use('/api/orders',        authenticate, orderRoutes);
+app.use('/api/notifications', authenticate, notificationRoutes);
+app.use('/api/templates',    authenticate, templateRoutes);
+app.use('/api/packages',     authenticate, packageRoutes);
 
 // Protected route example (requires authentication)
 app.get('/api/protected', authenticate, (req: Request, res: Response) => {
@@ -115,6 +137,10 @@ app.use((err: Error, req: Request, res: Response, next: any) => {
 
 // Start server
 app.listen(PORT, () => {
+  // Start RabbitMQ notification consumer (non-fatal if RabbitMQ unavailable)
+  startNotificationWorker().catch(() => {});
+  startReminderScheduler();
+
   console.log(`
 ╔═══════════════════════════════════════════╗
 ║   🎉 CelebrateSmart API Server Running   ║

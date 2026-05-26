@@ -42,7 +42,7 @@ const checkoutSchema = z.object({
   fullName: z.string().trim().min(1, 'Full name is required'),
   email: z.string().trim().email('Enter a valid email'),
   phone: z.string().trim().min(6, 'Phone number is required'),
-  address: z.string().trim().min(1, 'Delivery address is required'),
+  address: z.string().optional(),
   cardNumber: z.string().trim().min(12, 'Card number is required'),
   expiryDate: z.string().trim().min(4, 'Expiry date is required'),
   cvv: z.string().trim().min(3, 'CVV is required'),
@@ -67,7 +67,7 @@ export function CheckoutScreen({ cart, event, onNavigate, onComplete }: Checkout
     mode: 'onTouched',
   });
 
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const tax = subtotal * 0.1;
   const total = subtotal + tax;
 
@@ -182,13 +182,14 @@ export function CheckoutScreen({ cart, event, onNavigate, onComplete }: Checkout
                       name='address'
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Delivery Address</FormLabel>
+                          <FormLabel>Event / Delivery Address (optional)</FormLabel>
                           <div className='relative'>
                             <MapPin className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground' />
                             <FormControl>
                               <Input
                                 {...field}
                                 disabled={loading}
+                                placeholder='Where should we deliver or set up?'
                                 autoComplete='street-address'
                                 className='pl-9'
                               />
@@ -318,8 +319,8 @@ export function CheckoutScreen({ cart, event, onNavigate, onComplete }: Checkout
               <div className='space-y-3 max-h-64 overflow-y-auto mb-6 pb-6 border-b border-border'>
                 {cart.map(item => (
                   <div key={item.id} className='flex justify-between text-sm'>
-                    <span>{item.name} x {item.quantity}</span>
-                    <span>${(item.price * item.quantity).toFixed(2)}</span>
+                    <span>{item.product.name} x {item.quantity}</span>
+                    <span>${(item.product.price * item.quantity).toFixed(2)}</span>
                   </div>
                 ))}
               </div>

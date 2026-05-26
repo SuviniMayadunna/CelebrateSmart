@@ -19,6 +19,7 @@ interface AuthContextType {
   login: (email: string, password: string, role: 'customer' | 'admin') => Promise<void>;
   register: (name: string, email: string, password: string, phone: string) => Promise<void>;
   logout: () => void;
+  updateUser: (updates: Partial<Pick<AuthUser, 'name' | 'phone'>>) => void;
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -83,9 +84,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const updateUser = (updates: Partial<Pick<AuthUser, 'name' | 'phone'>>) => {
+    setUser(prev => prev ? { ...prev, ...updates } : null);
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, isAuthenticated: !!user, login, register, logout }}
+      value={{ user, isLoading, isAuthenticated: !!user, login, register, logout, updateUser }}
     >
       {children}
     </AuthContext.Provider>

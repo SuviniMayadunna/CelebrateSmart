@@ -34,7 +34,7 @@ export function CartScreen({
   onRemoveItem,
   onUpdateQuantity,
 }: CartScreenProps) {
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const tax = subtotal * 0.1;
   const total = subtotal + tax;
 
@@ -86,13 +86,13 @@ export function CartScreen({
                     <CardContent className='p-6 space-y-4'>
                       <div className='flex items-start justify-between gap-4'>
                         <div className='flex items-center gap-4 min-w-0'>
-                          <div className='text-4xl shrink-0'>{item.image || '🛍️'}</div>
+                          <div className='text-4xl shrink-0'>{item.product.imageUrl || '🛍️'}</div>
                           <div className='min-w-0'>
-                            <h3 className='font-bold text-lg text-foreground truncate'>{item.name}</h3>
-                            <Badge variant='outline'>{item.category}</Badge>
+                            <h3 className='font-bold text-lg text-foreground truncate'>{item.product.name}</h3>
+                            <Badge variant='outline'>{item.product.category}</Badge>
                           </div>
                         </div>
-                        <p className='font-bold text-lg whitespace-nowrap'>${item.price}</p>
+                        <p className='font-bold text-lg whitespace-nowrap'>${item.product.price}</p>
                       </div>
 
                       <Separator />
@@ -124,7 +124,7 @@ export function CartScreen({
                           <div className='text-right'>
                             <p className='text-sm text-muted-foreground'>Subtotal</p>
                             <p className='font-bold text-lg'>
-                              ${(item.price * item.quantity).toFixed(2)}
+                              ${(item.product.price * item.quantity).toFixed(2)}
                             </p>
                           </div>
 
