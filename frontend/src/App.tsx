@@ -109,7 +109,10 @@ export interface EventData {
   packageId?:      string | null;
   guestCount?:     number | null;
   colorTheme?:     string | null;
-  hasPaidOrder?:   boolean;
+  hasPaidOrder?:            boolean;
+  paidOrderId?:             string | null;
+  orderTotalAmount?:        number | null;
+  orderOriginalGuestCount?: number | null;
   planStepsTotal?: number;
   planStepsDone?:  number;
 }

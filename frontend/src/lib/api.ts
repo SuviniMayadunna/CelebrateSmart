@@ -290,8 +290,11 @@ export interface EventData {
   notes:          string;
   status:         string;
   completedTasks: string[];
-  packageId?:     string | null;
-  guestCount?:    number | null;
+  packageId?:              string | null;
+  guestCount?:             number | null;
+  paidOrderId?:            string | null;
+  orderTotalAmount?:        number | null;
+  orderOriginalGuestCount?: number | null;
 }
 
 export interface CreateEventRequest {
@@ -340,18 +343,20 @@ export interface Order {
   id:               string;
   orderNumber:      string;
   status:           OrderStatus;
-  totalAmount:   number;
-  currency:      string;
-  paymentStatus: PaymentState;
-  eventId:         string | null;
-  eventName:       string | null;
-  eventType:       string | null;
-  eventDate:       string | null;
-  eventTime:       string | null;
-  eventGuestCount: number | null;
-  eventColorTheme: string | null;
-  createdAt:       string;
-  items:           OrderItem[];
+  totalAmount:      number;
+  currency:         string;
+  paymentStatus:    PaymentState;
+  eventId:          string | null;
+  eventName:        string | null;
+  eventType:        string | null;
+  eventDate:        string | null;
+  eventTime:        string | null;
+  eventGuestCount:  number | null;
+  eventColorTheme:  string | null;
+  cancellationFee?: number | null;
+  refundAmount?:    number | null;
+  createdAt:        string;
+  items:            OrderItem[];
 }
 
 // Token management
@@ -581,6 +586,36 @@ export const eventsAPI = {
     taskId: string
   ): Promise<{ success: boolean; data: { event: EventData } }> =>
     apiRequest(`/events/${eventId}/tasks/${taskId}/uncomplete`, { method: 'PATCH' }),
+
+  adjustGuests: async (
+    eventId: string,
+    newGuestCount: number
+  ): Promise<{
+    success: boolean;
+    data: {
+      type:             'UPDATED' | 'REFUNDED' | 'CHARGE';
+      newGuestCount:    number;
+      refundAmount?:    number;
+      stripeRefundId?:  string;
+      adjustmentAmount?: number;
+      clientSecret?:    string;
+      paymentIntentId?: string;
+    };
+  }> =>
+    apiRequest(`/events/${eventId}/adjust-guests`, {
+      method: 'POST',
+      body: JSON.stringify({ newGuestCount }),
+    }),
+
+  confirmGuestAdjustment: async (
+    eventId: string,
+    newGuestCount: number,
+    paymentIntentId: string
+  ): Promise<{ success: boolean; data: { newGuestCount: number } }> =>
+    apiRequest(`/events/${eventId}/confirm-guest-adjustment`, {
+      method: 'POST',
+      body: JSON.stringify({ newGuestCount, paymentIntentId }),
+    }),
 };
 
 // Products API endpoints
@@ -646,6 +681,9 @@ export const ordersAPI = {
 
   pay: async (id: string): Promise<{ success: boolean; data: { clientSecret: string; orderId: string } }> =>
     apiRequest(`/orders/${id}/pay`, { method: 'POST' }),
+
+  cancel: async (id: string): Promise<{ success: boolean; data: { cancellationFee: number; refundAmount: number; stripeRefundId: string } }> =>
+    apiRequest(`/orders/${id}/cancel`, { method: 'POST' }),
 };
 
 // Templates API (customer-facing)
@@ -665,6 +703,12 @@ export const templatesAPI = {
 
 // Packages API
 export const packagesAPI = {
+  listPublic: async (): Promise<{ success: boolean; data: { packages: Package[] } }> => {
+    const res = await fetch(`${(import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '')}/api/packages-public`);
+    if (!res.ok) throw new Error('Failed to load packages');
+    return res.json();
+  },
+
   list: async (eventType?: string): Promise<{ success: boolean; data: { packages: Package[] } }> =>
     apiRequest(`/packages${eventType ? `?eventType=${eventType}` : ''}`, { method: 'GET' }),
 

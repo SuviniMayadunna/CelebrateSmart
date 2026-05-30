@@ -327,3 +327,53 @@ export function orderStatusEmail(data: {
     html:    layout(body),
   };
 }
+
+// ── Cancellation & Refund ─────────────────────────────────────────────────────
+export function cancellationEmail(data: {
+  customerName:    string;
+  eventName:       string;
+  orderNumber:     string;
+  totalPaid:       number;
+  cancellationFee: number;
+  refundAmount:    number;
+}): { subject: string; html: string } {
+  const fmt = (n: number) => `$${n.toFixed(2)}`;
+  const body = `
+    <h2 style="margin:0 0 6px;color:#1a2e22;font-size:22px;font-weight:700;">Booking Cancelled</h2>
+    <p style="margin:0 0 24px;color:#4a6355;font-size:15px;">Hi ${data.customerName}, your booking has been cancelled and your refund is being processed.</p>
+
+    <div style="background:#f8faf8;border:1px solid #d4e6da;border-radius:10px;padding:20px 24px;margin-bottom:24px;">
+      <p style="margin:0 0 4px;color:#6b7c72;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;">Event</p>
+      <p style="margin:0 0 16px;color:#1a2e22;font-size:16px;font-weight:600;">${data.eventName}</p>
+      <p style="margin:0 0 4px;color:#6b7c72;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;">Order Number</p>
+      <p style="margin:0;color:#1a2e22;font-size:15px;font-weight:500;">#${data.orderNumber}</p>
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      <tr>
+        <td style="padding:8px 0;color:#4a6355;font-size:14px;">Amount Paid</td>
+        <td style="padding:8px 0;color:#1a2e22;font-size:14px;text-align:right;font-weight:600;">${fmt(data.totalPaid)}</td>
+      </tr>
+      <tr style="border-top:1px solid #e0e8e2;">
+        <td style="padding:8px 0;color:#c0392b;font-size:14px;">Cancellation Fee (10%)</td>
+        <td style="padding:8px 0;color:#c0392b;font-size:14px;text-align:right;font-weight:600;">−${fmt(data.cancellationFee)}</td>
+      </tr>
+      <tr style="border-top:2px solid #2d7a50;">
+        <td style="padding:12px 0 0;color:#1a2e22;font-size:16px;font-weight:700;">Refund Amount</td>
+        <td style="padding:12px 0 0;color:#2d7a50;font-size:18px;font-weight:700;text-align:right;">${fmt(data.refundAmount)}</td>
+      </tr>
+    </table>
+
+    <p style="margin:0 0 12px;color:#1a2e22;font-size:14px;line-height:1.6;background:#fff8e1;border-left:3px solid #f59e0b;padding:14px 18px;border-radius:0 8px 8px 0;">
+      Your refund of <strong>${fmt(data.refundAmount)}</strong> will be returned to your original payment method within <strong>3–5 business days</strong>, depending on your bank.
+    </p>
+
+    <p style="margin:0;color:#4a6355;font-size:13px;">
+      Questions? Reply to this email or contact our support team.
+    </p>`;
+
+  return {
+    subject: `Booking Cancelled — Refund of ${fmt(data.refundAmount)} Initiated | CelebrateSmart`,
+    html:    layout(body),
+  };
+}

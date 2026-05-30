@@ -12,6 +12,7 @@ import notificationRoutes from './routes/notifications';
 import templateRoutes from './routes/templates';
 import packageRoutes from './routes/packages';
 import stripeWebhookRoutes from './routes/stripe-webhook';
+import packagesPublicRoutes from './routes/packages-public';
 import { authenticate, requireAdmin } from './middleware/auth';
 import { startNotificationWorker } from './workers/notification-worker';
 import { startReminderScheduler } from './workers/reminder-scheduler';
@@ -73,6 +74,7 @@ app.use((req: Request, res: Response, next) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/packages-public', packagesPublicRoutes);
 
 // Admin routes (requires authentication + admin role)
 app.use('/api/admin', authenticate, requireAdmin, adminRoutes);

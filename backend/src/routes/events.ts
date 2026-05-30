@@ -63,8 +63,11 @@ function formatEvent(event: any) {
     completedTasks,
     planStepsTotal,
     planStepsDone,
-    hasPaidOrder: Array.isArray(event.orders) && event.orders.length > 0,
-    colorTheme:   (event as any).colorTheme ?? null,
+    hasPaidOrder:           Array.isArray(event.orders) && event.orders.length > 0,
+    paidOrderId:            Array.isArray(event.orders) && event.orders.length > 0 ? event.orders[0].id : null,
+    orderTotalAmount:       Array.isArray(event.orders) && event.orders.length > 0 ? Number(event.orders[0].totalAmount) : null,
+    orderOriginalGuestCount: Array.isArray(event.orders) && event.orders.length > 0 ? (event.orders[0].originalGuestCount ?? null) : null,
+    colorTheme:             (event as any).colorTheme ?? null,
   };
 }
 
@@ -93,7 +96,7 @@ const PLAN_INCLUDE = { steps: { orderBy: { sortOrder: 'asc' as const } } };
 const PAID_ORDERS_INCLUDE = {
   orders: {
     where:  { status: { in: ['PAID','PREPARING','READY_FOR_PICKUP','OUT_FOR_DELIVERY','DELIVERED'] as any[] } },
-    select: { id: true },
+    select: { id: true, totalAmount: true, originalGuestCount: true } as any,
     take:   1,
   },
 };
@@ -219,13 +222,14 @@ router.post(
       const totalAmount = packageTotal + extraTotal;
 
       // Create pending order
-      const order = await prisma.order.create({
+      const order = await (prisma.order.create as any)({
         data: {
-          userId:        req.user!.userId,
-          eventId:       event.id,
+          userId:             req.user!.userId,
+          eventId:            event.id,
           totalAmount,
-          status:        'PENDING_PAYMENT',
-          paymentStatus: 'PENDING',
+          originalGuestCount: Number(guestCount),
+          status:             'PENDING_PAYMENT',
+          paymentStatus:      'PENDING',
           items: {
             create: [
               ...selectedItems.map(item => ({
@@ -702,6 +706,180 @@ router.patch('/:id/plan/steps/:stepId/uncomplete', async (req: Request, res: Res
     res.status(500).json({ success: false, message: 'Failed to update step' });
   }
 });
+
+// POST /api/events/:id/adjust-guests — reprice a paid event when guest count changes
+router.post(
+  '/:id/adjust-guests',
+  [
+    param('id').isUUID().withMessage('Invalid event ID'),
+    body('newGuestCount').isInt({ min: 1 }).withMessage('newGuestCount must be at least 1'),
+  ],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ success: false, message: errors.array()[0].msg });
+      return;
+    }
+
+    const newGuestCount = Number(req.body.newGuestCount);
+
+    try {
+      const event = await prisma.event.findFirst({
+        where: { id: req.params.id, userId: req.user!.userId },
+      });
+      if (!event) { res.status(404).json({ success: false, message: 'Event not found' }); return; }
+      if (event.status === 'CANCELED') {
+        res.status(400).json({ success: false, message: 'Cannot modify a cancelled event' }); return;
+      }
+      if (event.guestCount === newGuestCount) {
+        res.status(400).json({ success: false, message: 'Guest count has not changed' }); return;
+      }
+
+      // Find the paid order for this event
+      const paidOrder = await prisma.order.findFirst({
+        where:   { eventId: event.id, userId: req.user!.userId, status: 'PAID' },
+        include: { payment: true },
+      }) as any;
+
+      // No paid order — just update the event guest count directly
+      if (!paidOrder) {
+        await prisma.event.update({ where: { id: event.id }, data: { guestCount: newGuestCount } });
+        res.json({ success: true, data: { type: 'UPDATED', newGuestCount } });
+        return;
+      }
+
+      if (!paidOrder.originalGuestCount || paidOrder.originalGuestCount === 0) {
+        res.status(400).json({ success: false, message: 'Cannot calculate adjustment: original guest count not recorded' });
+        return;
+      }
+
+      const originalTotal    = Number(paidOrder.totalAmount);
+      const perGuestRate     = originalTotal / paidOrder.originalGuestCount;
+      const rawAdjustment    = (newGuestCount - paidOrder.originalGuestCount) * perGuestRate;
+      const adjustmentAmount = Math.round(rawAdjustment * 100) / 100; // 2 dp
+
+      if (adjustmentAmount === 0) {
+        await prisma.event.update({ where: { id: event.id }, data: { guestCount: newGuestCount } });
+        res.json({ success: true, data: { type: 'UPDATED', newGuestCount } });
+        return;
+      }
+
+      if (adjustmentAmount < 0) {
+        // Fewer guests — issue a partial Stripe refund
+        const refundAmountCents = Math.round(Math.abs(adjustmentAmount) * 100);
+        const paymentIntentId   = paidOrder.payment?.paymentIntentId;
+        if (!paymentIntentId) {
+          res.status(400).json({ success: false, message: 'No payment record found for this order' }); return;
+        }
+
+        const refund = await stripe.refunds.create({
+          payment_intent: paymentIntentId,
+          amount:         refundAmountCents,
+        });
+
+        await prisma.$transaction([
+          prisma.event.update({ where: { id: event.id }, data: { guestCount: newGuestCount } }),
+          prisma.order.update({
+            where: { id: paidOrder.id },
+            data:  { totalAmount: { decrement: Math.abs(adjustmentAmount) } },
+          }),
+        ]);
+
+        res.json({
+          success: true,
+          data: {
+            type:           'REFUNDED',
+            newGuestCount,
+            refundAmount:   Math.abs(adjustmentAmount),
+            stripeRefundId: refund.id,
+          },
+        });
+        return;
+      }
+
+      // More guests — create a new Stripe PaymentIntent for the extra charge
+      if (!process.env.STRIPE_SECRET_KEY) {
+        res.status(503).json({ success: false, message: 'Payment service not configured' }); return;
+      }
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount:                    Math.round(adjustmentAmount * 100),
+        currency:                  paidOrder.currency,
+        automatic_payment_methods: { enabled: true },
+        metadata:                  {
+          orderId:      paidOrder.id,
+          eventId:      event.id,
+          adjustmentFor: 'GUEST_COUNT',
+          newGuestCount: String(newGuestCount),
+        },
+      });
+
+      res.json({
+        success: true,
+        data: {
+          type:             'CHARGE',
+          adjustmentAmount,
+          newGuestCount,
+          clientSecret:     paymentIntent.client_secret,
+          paymentIntentId:  paymentIntent.id,
+        },
+      });
+    } catch (err) {
+      console.error('POST /events/:id/adjust-guests', err);
+      res.status(500).json({ success: false, message: 'Failed to adjust guest count' });
+    }
+  }
+);
+
+// POST /api/events/:id/confirm-guest-adjustment — finalise a guest count increase after payment
+router.post(
+  '/:id/confirm-guest-adjustment',
+  [
+    param('id').isUUID().withMessage('Invalid event ID'),
+    body('newGuestCount').isInt({ min: 1 }).withMessage('newGuestCount is required'),
+    body('paymentIntentId').notEmpty().withMessage('paymentIntentId is required'),
+  ],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ success: false, message: errors.array()[0].msg });
+      return;
+    }
+
+    const { newGuestCount, paymentIntentId } = req.body;
+
+    try {
+      const event = await prisma.event.findFirst({
+        where: { id: req.params.id, userId: req.user!.userId },
+      });
+      if (!event) { res.status(404).json({ success: false, message: 'Event not found' }); return; }
+
+      // Verify Stripe PaymentIntent succeeded
+      const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      if (intent.status !== 'succeeded') {
+        res.status(400).json({ success: false, message: 'Payment not completed' }); return;
+      }
+
+      const adjustmentAmount = intent.amount / 100;
+
+      const paidOrder = await prisma.order.findFirst({
+        where: { eventId: event.id, userId: req.user!.userId, status: 'PAID' },
+      });
+
+      await prisma.$transaction([
+        prisma.event.update({ where: { id: event.id }, data: { guestCount: Number(newGuestCount) } }),
+        ...(paidOrder ? [prisma.order.update({
+          where: { id: paidOrder.id },
+          data:  { totalAmount: { increment: adjustmentAmount } },
+        })] : []),
+      ]);
+
+      res.json({ success: true, data: { newGuestCount: Number(newGuestCount) } });
+    } catch (err) {
+      console.error('POST /events/:id/confirm-guest-adjustment', err);
+      res.status(500).json({ success: false, message: 'Failed to confirm guest adjustment' });
+    }
+  }
+);
 
 // POST /api/events/:id/reminders — create notification reminders for upcoming plan steps
 router.post('/:id/reminders', async (req: Request, res: Response): Promise<void> => {

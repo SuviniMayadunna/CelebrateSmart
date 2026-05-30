@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppScreen, EventData } from '@/App';
-import { EventPlan, PlanStep, Package, eventPlanAPI, eventsAPI, packagesAPI } from '@/lib/api';
+import { EventPlan, PlanStep, Package, eventPlanAPI, eventsAPI, packagesAPI, ordersAPI } from '@/lib/api';
 import { Spinner } from '@/components/ui/spinner';
-import { Calendar, Clock, MapPin, CheckCircle2, Circle, ChevronDown, ChevronUp, Users, ChevronRight, Pencil, X } from 'lucide-react';
+import { Calendar, Clock, MapPin, CheckCircle2, Circle, ChevronDown, ChevronUp, Users, ChevronRight, Pencil, X, AlertTriangle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { stripePromise } from '@/lib/stripe';
 
 interface EventPlanScreenProps {
   event:          EventData;
@@ -217,8 +219,75 @@ function groupByWeek(steps: PlanStep[]) {
     }));
 }
 
+// ── Stripe payment form for guest count increase ──────────────────────────────
+function GuestAdjustmentPaymentForm({
+  eventId, newGuestCount, adjustmentAmount, paymentIntentId, onClose, onSuccess,
+}: {
+  eventId:          string;
+  newGuestCount:    number;
+  adjustmentAmount: number;
+  paymentIntentId:  string;
+  onClose:          () => void;
+  onSuccess:        (newCount: number) => void;
+}) {
+  const stripe   = useStripe();
+  const elements = useElements();
+  const [paying,   setPaying]   = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+
+  const handlePay = async () => {
+    if (!stripe || !elements) return;
+    setPaying(true);
+    setPayError(null);
+    try {
+      const { error } = await stripe.confirmPayment({
+        elements,
+        redirect: 'if_required',
+      });
+      if (error) { setPayError(error.message ?? 'Payment failed'); return; }
+
+      await eventsAPI.confirmGuestAdjustment(eventId, newGuestCount, paymentIntentId);
+      toast({ title: 'Guest count updated', description: `Now ${newGuestCount} guests. Payment confirmed.` });
+      onSuccess(newGuestCount);
+    } catch {
+      setPayError('Payment confirmation failed. Please try again.');
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  return (
+    <div className='space-y-4'>
+      <div className='rounded-2xl p-4' style={{ background: 'hsl(43,74%,97%)', border: '1.5px solid hsl(43,65%,82%)' }}>
+        <p className='text-xs font-semibold uppercase tracking-wide mb-1' style={{ color: 'hsl(43,55%,35%)', fontFamily: 'Inter, sans-serif' }}>
+          Additional Charge for {newGuestCount} guests
+        </p>
+        <p className='text-2xl font-black' style={{ color: 'hsl(43,55%,28%)', fontFamily: 'Inter, sans-serif' }}>
+          ${adjustmentAmount.toFixed(2)}
+        </p>
+      </div>
+      <PaymentElement />
+      {payError && <p className='text-xs font-medium' style={{ color: 'hsl(0,70%,45%)' }}>{payError}</p>}
+      <div className='flex gap-3 pt-2'>
+        <button onClick={onClose} disabled={paying}
+          className='flex-1 py-3 rounded-2xl text-sm font-semibold'
+          style={{ background: 'hsl(150,10%,95%)', color: 'hsl(155,22%,35%)', fontFamily: 'Inter, sans-serif' }}>
+          Cancel
+        </button>
+        <button onClick={handlePay} disabled={paying || !stripe}
+          className='flex-1 py-3 rounded-2xl text-sm font-semibold disabled:opacity-60 transition-all hover:scale-[1.02]'
+          style={{ background: 'linear-gradient(135deg, hsl(43,74%,49%), hsl(38,65%,42%))', color: 'hsl(155,45%,10%)', fontFamily: 'Inter, sans-serif' }}>
+          {paying ? 'Processing…' : `Pay $${adjustmentAmount.toFixed(2)}`}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Edit modal ────────────────────────────────────────────────────────────────
-interface EditForm { name: string; date: string; time: string; venue: string; notes: string; }
+interface EditForm { name: string; date: string; time: string; venue: string; notes: string; guestCount: string; }
+
+interface GuestChargeState { clientSecret: string; paymentIntentId: string; newGuestCount: number; adjustmentAmount: number; }
 
 function EditEventModal({
   event, onClose, onSave,
@@ -228,13 +297,15 @@ function EditEventModal({
   onSave:  (updated: EventData) => void;
 }) {
   const [form, setForm] = useState<EditForm>({
-    name:  event.name,
-    date:  event.date,
-    time:  event.time,
-    venue: event.venue ?? '',
-    notes: event.notes ?? '',
+    name:       event.name,
+    date:       event.date,
+    time:       event.time,
+    venue:      event.venue ?? '',
+    notes:      event.notes ?? '',
+    guestCount: event.guestCount != null ? String(event.guestCount) : '',
   });
-  const [saving, setSaving] = useState(false);
+  const [saving,      setSaving]      = useState(false);
+  const [guestCharge, setGuestCharge] = useState<GuestChargeState | null>(null);
 
   const set = (field: keyof EditForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm(f => ({ ...f, [field]: e.target.value }));
@@ -246,6 +317,10 @@ function EditEventModal({
     }
     setSaving(true);
     try {
+      const newGuestCount = form.guestCount ? Number(form.guestCount) : null;
+      const guestChanged  = newGuestCount != null && newGuestCount !== event.guestCount && event.hasPaidOrder;
+
+      // Save all non-guest fields first
       const res = await eventsAPI.update(event.id, {
         name:  form.name.trim(),
         date:  form.date,
@@ -253,11 +328,35 @@ function EditEventModal({
         venue: form.venue.trim() || 'To be determined',
         notes: form.notes.trim(),
       });
-      onSave(res.data.event);
+      const updatedEvent: EventData = { ...res.data.event };
+
+      if (guestChanged && newGuestCount) {
+        const adjRes = await eventsAPI.adjustGuests(event.id, newGuestCount);
+        if (adjRes.data.type === 'CHARGE' && adjRes.data.clientSecret && adjRes.data.paymentIntentId) {
+          // Need to collect additional payment — open Stripe form
+          setSaving(false);
+          setGuestCharge({
+            clientSecret:     adjRes.data.clientSecret,
+            paymentIntentId:  adjRes.data.paymentIntentId,
+            newGuestCount,
+            adjustmentAmount: adjRes.data.adjustmentAmount!,
+          });
+          onSave(updatedEvent); // Save other fields now; guest count updates after payment
+          return;
+        } else if (adjRes.data.type === 'REFUNDED') {
+          toast({
+            title: 'Guest count updated',
+            description: `Refund of $${adjRes.data.refundAmount!.toFixed(2)} initiated to your original payment method.`,
+          });
+        }
+        updatedEvent.guestCount = newGuestCount;
+      }
+
+      onSave(updatedEvent);
       toast({ title: 'Event updated', description: 'Your changes have been saved.' });
       onClose();
-    } catch {
-      toast({ variant: 'destructive', title: 'Failed to save changes' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: err?.message ?? 'Failed to save changes' });
     } finally {
       setSaving(false);
     }
@@ -288,123 +387,264 @@ function EditEventModal({
 
   return (
     <>
-      {/* Backdrop */}
-      <button
-        type='button'
-        aria-label='Close edit modal'
-        onClick={onClose}
-        className='fixed inset-0 z-[55] bg-black/50'
-      />
-
-      {/* Modal */}
-      <div
-        className='fixed inset-0 z-[60] flex items-center justify-center p-4'
-        role='dialog' aria-modal='true'
-      >
-        <div
-          className='relative w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden'
-          style={{ background: 'white' }}
-          onClick={e => e.stopPropagation()}
-        >
+      <button type='button' aria-label='Close edit modal' onClick={onClose} className='fixed inset-0 z-[55] bg-black/50' />
+      <div className='fixed inset-0 z-[60] flex items-center justify-center p-4' role='dialog' aria-modal='true'>
+        <div className='relative w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden' style={{ background: 'white' }} onClick={e => e.stopPropagation()}>
           {/* Header */}
-          <div
-            className='flex items-center justify-between px-6 py-5'
-            style={{ background: 'linear-gradient(135deg, hsl(155,42%,14%) 0%, hsl(155,35%,22%) 100%)' }}
-          >
+          <div className='flex items-center justify-between px-6 py-5'
+            style={{ background: 'linear-gradient(135deg, hsl(155,42%,14%) 0%, hsl(155,35%,22%) 100%)' }}>
             <div>
               <h2 className='font-serif text-xl font-bold text-white'>Edit Event</h2>
               <p className='text-xs mt-0.5' style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif' }}>
                 Changes will be saved to your booking
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className='p-2 rounded-xl transition-colors hover:bg-white/10'
-              aria-label='Close'
-            >
+            <button onClick={onClose} className='p-2 rounded-xl transition-colors hover:bg-white/10' aria-label='Close'>
               <X className='w-4 h-4 text-white' />
             </button>
           </div>
 
-          {/* Form */}
+          {/* Form or Stripe payment */}
           <div className='px-6 py-5 space-y-4'>
-            {/* Name */}
-            <div>
-              <label style={labelStyle}>Event Name</label>
-              <input style={inputStyle} value={form.name} onChange={set('name')} placeholder="e.g. Sarah's 30th Birthday" />
-            </div>
-
-            {/* Date + Time */}
-            <div className='grid grid-cols-2 gap-3'>
-              <div>
-                <label style={labelStyle}>Date</label>
-                <input type='date' style={inputStyle} value={form.date} onChange={set('date')} />
-              </div>
-              <div>
-                <label style={labelStyle}>Time</label>
-                <input type='time' style={inputStyle} value={form.time} onChange={set('time')} />
-              </div>
-            </div>
-
-            {/* Venue */}
-            <div>
-              <label style={labelStyle}>Venue</label>
-              <input style={inputStyle} value={form.venue} onChange={set('venue')} placeholder='Venue name or address' />
-            </div>
-
-            {/* Notes */}
-            <div>
-              <label style={labelStyle}>Notes</label>
-              <textarea
-                rows={3}
-                style={{ ...inputStyle, resize: 'none' }}
-                value={form.notes}
-                onChange={set('notes')}
-                placeholder='Any special notes or instructions…'
-              />
-            </div>
-
-            {/* Guest count — locked */}
-            {event.guestCount && (
-              <div
-                className='flex items-center gap-3 px-4 py-3 rounded-2xl'
-                style={{ background: 'hsl(43,74%,97%)', border: '1.5px solid hsl(43,65%,82%)' }}
-              >
-                <Users className='w-4 h-4 shrink-0' style={{ color: 'hsl(43,55%,40%)' }} />
+            {guestCharge ? (
+              <>
+                <h3 className='font-semibold text-sm' style={{ color: 'hsl(155,45%,13%)', fontFamily: 'Inter, sans-serif' }}>
+                  Additional Payment Required
+                </h3>
+                <Elements stripe={stripePromise} options={{ clientSecret: guestCharge.clientSecret }}>
+                  <GuestAdjustmentPaymentForm
+                    eventId={event.id}
+                    newGuestCount={guestCharge.newGuestCount}
+                    adjustmentAmount={guestCharge.adjustmentAmount}
+                    paymentIntentId={guestCharge.paymentIntentId}
+                    onClose={() => { setGuestCharge(null); onClose(); }}
+                    onSuccess={newCount => {
+                      onSave({ ...event, guestCount: newCount });
+                      setGuestCharge(null);
+                      onClose();
+                    }}
+                  />
+                </Elements>
+              </>
+            ) : (
+              <>
                 <div>
-                  <p className='text-xs font-semibold' style={{ color: 'hsl(43,55%,35%)', fontFamily: 'Inter, sans-serif' }}>
-                    {event.guestCount} guests — locked after payment
-                  </p>
-                  <p className='text-xs' style={{ color: 'hsl(43,40%,50%)', fontFamily: 'Inter, sans-serif' }}>
-                    Contact support to change guest count
-                  </p>
+                  <label style={labelStyle}>Event Name</label>
+                  <input style={inputStyle} value={form.name} onChange={set('name')} placeholder="e.g. Sarah's 30th Birthday" />
                 </div>
-              </div>
+                <div className='grid grid-cols-2 gap-3'>
+                  <div>
+                    <label style={labelStyle}>Date</label>
+                    <input type='date' style={inputStyle} value={form.date} onChange={set('date')} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Time</label>
+                    <input type='time' style={inputStyle} value={form.time} onChange={set('time')} />
+                  </div>
+                </div>
+                <div>
+                  <label style={labelStyle}>Venue</label>
+                  <input style={inputStyle} value={form.venue} onChange={set('venue')} placeholder='Venue name or address' />
+                </div>
+                <div>
+                  <label style={labelStyle}>Notes</label>
+                  <textarea rows={3} style={{ ...inputStyle, resize: 'none' }} value={form.notes} onChange={set('notes')}
+                    placeholder='Any special notes or instructions…' />
+                </div>
+                {/* Guest count — editable; triggers repricing for paid events */}
+                <div>
+                  <label style={labelStyle}>
+                    Guest Count
+                    {event.hasPaidOrder && (
+                      <span className='ml-2 normal-case font-normal' style={{ color: 'hsl(43,55%,38%)' }}>
+                        · changing this will adjust your payment
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    type='text'
+                    inputMode='numeric'
+                    pattern='[0-9]*'
+                    style={inputStyle}
+                    value={form.guestCount}
+                    onChange={e => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      setForm(f => ({ ...f, guestCount: val }));
+                    }}
+                    placeholder='Number of guests'
+                  />
+                  {/* Real-time price preview for paid events */}
+                  {(() => {
+                    if (!event.hasPaidOrder) return null;
+                    const origCount  = event.orderOriginalGuestCount ?? event.guestCount ?? null;
+                    const totalPaid  = event.orderTotalAmount ?? null;
+                    const newCount   = parseInt(form.guestCount, 10);
+                    if (!origCount || !totalPaid || isNaN(newCount) || newCount <= 0 || newCount === origCount) return null;
+                    const perGuest   = totalPaid / origCount;
+                    const delta      = (newCount - origCount) * perGuest;
+                    const newTotal   = totalPaid + delta;
+                    const isCharge   = delta > 0;
+                    return (
+                      <div className='mt-2 rounded-xl p-3 space-y-1.5'
+                        style={{
+                          background: isCharge ? 'hsl(43,74%,97%)' : 'hsl(142,40%,97%)',
+                          border: `1.5px solid ${isCharge ? 'hsl(43,65%,82%)' : 'hsl(142,35%,78%)'}`,
+                        }}>
+                        <div className='flex justify-between text-xs' style={{ color: 'hsl(150,8%,50%)', fontFamily: 'Inter, sans-serif' }}>
+                          <span>Original total ({origCount} guests)</span>
+                          <span>${totalPaid.toFixed(2)}</span>
+                        </div>
+                        <div className='flex justify-between text-xs font-bold'
+                          style={{ color: isCharge ? 'hsl(43,60%,28%)' : 'hsl(142,60%,22%)', fontFamily: 'Inter, sans-serif' }}>
+                          <span>{isCharge ? 'Additional charge' : 'Refund'} ({newCount - origCount > 0 ? '+' : ''}{newCount - origCount} guests)</span>
+                          <span>{isCharge ? '+' : '−'}${Math.abs(delta).toFixed(2)}</span>
+                        </div>
+                        <div className='flex justify-between text-xs pt-1.5' style={{ borderTop: '1px solid rgba(0,0,0,0.07)', color: 'hsl(155,45%,13%)', fontFamily: 'Inter, sans-serif' }}>
+                          <span className='font-semibold'>New total ({newCount} guests)</span>
+                          <span className='font-bold'>${newTotal.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </>
             )}
           </div>
 
-          {/* Footer */}
-          <div className='px-6 pb-6 flex gap-3'>
-            <button
-              onClick={onClose}
-              className='flex-1 py-3 rounded-2xl text-sm font-semibold transition-all hover:bg-gray-100'
-              style={{ background: 'hsl(150,10%,95%)', color: 'hsl(155,22%,35%)', fontFamily: 'Inter, sans-serif' }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className='flex-1 py-3 rounded-2xl text-sm font-semibold transition-all hover:scale-[1.02] disabled:opacity-60'
-              style={{
-                background: 'linear-gradient(135deg, hsl(155,42%,20%), hsl(155,33%,34%))',
-                color: 'white',
-                fontFamily: 'Inter, sans-serif',
-              }}
-            >
-              {saving ? 'Saving…' : 'Save Changes'}
-            </button>
-          </div>
+          {!guestCharge && (
+            <div className='px-6 pb-6 flex gap-3'>
+              <button onClick={onClose}
+                className='flex-1 py-3 rounded-2xl text-sm font-semibold transition-all hover:bg-gray-100'
+                style={{ background: 'hsl(150,10%,95%)', color: 'hsl(155,22%,35%)', fontFamily: 'Inter, sans-serif' }}>
+                Cancel
+              </button>
+              <button onClick={handleSave} disabled={saving}
+                className='flex-1 py-3 rounded-2xl text-sm font-semibold transition-all hover:scale-[1.02] disabled:opacity-60'
+                style={{ background: 'linear-gradient(135deg, hsl(155,42%,20%), hsl(155,33%,34%))', color: 'white', fontFamily: 'Inter, sans-serif' }}>
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Cancel Booking modal ──────────────────────────────────────────────────────
+function CancelBookingModal({
+  event, onClose, onCancelled,
+}: {
+  event:       EventData;
+  onClose:     () => void;
+  onCancelled: () => void;
+}) {
+  const [cancelling, setCancelling] = useState(false);
+  const [result,     setResult]     = useState<{ fee: number; refund: number } | null>(null);
+  const [error,      setError]      = useState<string | null>(null);
+
+  const handleConfirm = async () => {
+    if (!event.paidOrderId) return;
+    setCancelling(true);
+    setError(null);
+    try {
+      const res = await ordersAPI.cancel(event.paidOrderId);
+      setResult({ fee: res.data.cancellationFee, refund: res.data.refundAmount });
+    } catch (err: any) {
+      setError(err?.message ?? 'Failed to cancel booking');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  return (
+    <>
+      <button type='button' aria-label='Close' onClick={onClose} className='fixed inset-0 z-[55] bg-black/50' />
+      <div className='fixed inset-0 z-[60] flex items-center justify-center p-4' role='dialog' aria-modal='true'>
+        <div className='relative w-full max-w-md rounded-3xl shadow-2xl overflow-hidden' style={{ background: 'white' }} onClick={e => e.stopPropagation()}>
+
+          {result ? (
+            /* ── Success state ── */
+            <div className='p-8 text-center'>
+              <p className='text-4xl mb-3'>✅</p>
+              <h2 className='font-serif text-xl font-bold mb-2' style={{ color: 'hsl(155,45%,13%)' }}>Booking Cancelled</h2>
+              <p className='text-sm mb-5' style={{ color: 'hsl(150,8%,48%)', fontFamily: 'Inter, sans-serif' }}>
+                A refund of <strong>${result.refund.toFixed(2)}</strong> has been initiated to your original payment method. Allow 3–5 business days.
+              </p>
+              <div className='rounded-2xl p-4 mb-5 text-left space-y-2' style={{ background: 'hsl(150,15%,97%)', border: '1px solid hsl(150,12%,88%)' }}>
+                <div className='flex justify-between text-sm' style={{ color: 'hsl(150,8%,48%)', fontFamily: 'Inter, sans-serif' }}>
+                  <span>Cancellation fee (10%)</span>
+                  <span className='font-semibold' style={{ color: 'hsl(0,65%,45%)' }}>−${result.fee.toFixed(2)}</span>
+                </div>
+                <div className='flex justify-between text-sm font-bold' style={{ color: 'hsl(155,45%,13%)' }}>
+                  <span>Refund amount</span>
+                  <span style={{ color: 'hsl(142,60%,28%)' }}>${result.refund.toFixed(2)}</span>
+                </div>
+              </div>
+              <button
+                onClick={onCancelled}
+                className='w-full py-3 rounded-2xl text-sm font-semibold'
+                style={{ background: 'linear-gradient(135deg, hsl(155,42%,20%), hsl(155,33%,34%))', color: 'white', fontFamily: 'Inter, sans-serif' }}
+              >
+                Back to My Events
+              </button>
+            </div>
+          ) : (
+            /* ── Confirmation state ── */
+            <>
+              <div className='flex items-center justify-between px-6 py-5'
+                style={{ background: 'linear-gradient(135deg, hsl(0,60%,22%) 0%, hsl(0,50%,35%) 100%)' }}>
+                <div>
+                  <h2 className='font-serif text-xl font-bold text-white'>Cancel Booking</h2>
+                  <p className='text-xs mt-0.5' style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif' }}>
+                    This action cannot be undone
+                  </p>
+                </div>
+                <button onClick={onClose} className='p-2 rounded-xl transition-colors hover:bg-white/10' aria-label='Close'>
+                  <X className='w-4 h-4 text-white' />
+                </button>
+              </div>
+
+              <div className='px-6 py-5 space-y-4'>
+                <div className='rounded-2xl p-4' style={{ background: 'hsl(0,60%,98%)', border: '1.5px solid hsl(0,55%,88%)' }}>
+                  <div className='flex items-start gap-3'>
+                    <AlertTriangle className='w-5 h-5 mt-0.5 shrink-0' style={{ color: 'hsl(0,65%,50%)' }} />
+                    <div>
+                      <p className='text-sm font-semibold mb-1' style={{ color: 'hsl(0,55%,32%)', fontFamily: 'Inter, sans-serif' }}>
+                        A 10% cancellation fee applies
+                      </p>
+                      <p className='text-xs leading-relaxed' style={{ color: 'hsl(0,40%,45%)', fontFamily: 'Inter, sans-serif' }}>
+                        You will receive 90% of your original payment back to your card. Refunds take 3–5 business days.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <p className='text-sm' style={{ color: 'hsl(150,8%,48%)', fontFamily: 'Inter, sans-serif' }}>
+                  Are you sure you want to cancel <strong style={{ color: 'hsl(155,45%,13%)' }}>{event.name}</strong>?
+                </p>
+
+                {error && (
+                  <p className='text-xs font-medium px-3 py-2 rounded-xl' style={{ background: 'hsl(0,60%,97%)', color: 'hsl(0,65%,40%)', fontFamily: 'Inter, sans-serif' }}>
+                    {error}
+                  </p>
+                )}
+              </div>
+
+              <div className='px-6 pb-6 flex gap-3'>
+                <button onClick={onClose} disabled={cancelling}
+                  className='flex-1 py-3 rounded-2xl text-sm font-semibold transition-all hover:bg-gray-100'
+                  style={{ background: 'hsl(150,10%,95%)', color: 'hsl(155,22%,35%)', fontFamily: 'Inter, sans-serif' }}>
+                  Keep My Booking
+                </button>
+                <button onClick={handleConfirm} disabled={cancelling || !event.paidOrderId}
+                  className='flex-1 py-3 rounded-2xl text-sm font-semibold transition-all hover:scale-[1.02] disabled:opacity-60'
+                  style={{ background: 'linear-gradient(135deg, hsl(0,60%,42%), hsl(0,55%,52%))', color: 'white', fontFamily: 'Inter, sans-serif' }}>
+                  {cancelling ? 'Cancelling…' : 'Confirm Cancellation'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </>
@@ -424,11 +664,12 @@ const PKG_CATEGORY_EMOJI: Record<string, string> = {
 };
 
 export function EventPlanScreen({ event, initialPlan, onNavigate, onEventUpdate }: EventPlanScreenProps) {
-  const [eventData, setEventData] = useState<EventData>(event);
-  const [plan,      setPlan]      = useState<EventPlan | null>(initialPlan);
-  const [fetching,  setFetching]  = useState(!initialPlan);
-  const [editOpen,  setEditOpen]  = useState(false);
-  const [pkg,       setPkg]       = useState<Package | null>(null);
+  const [eventData,   setEventData]   = useState<EventData>(event);
+  const [plan,        setPlan]        = useState<EventPlan | null>(initialPlan);
+  const [fetching,    setFetching]    = useState(!initialPlan);
+  const [editOpen,    setEditOpen]    = useState(false);
+  const [cancelOpen,  setCancelOpen]  = useState(false);
+  const [pkg,         setPkg]         = useState<Package | null>(null);
   const { toggleStep, toggling } = useStepToggle(plan, setPlan, eventData.id);
 
   const handleEventSave = (updated: EventData) => {
@@ -480,6 +721,21 @@ export function EventPlanScreen({ event, initialPlan, onNavigate, onEventUpdate 
     return Math.round((evt.getTime() - today.getTime()) / 86400000);
   }, [eventData.date]);
 
+  const hoursUntilEvent = useMemo(() => {
+    if (!eventData.date) return null;
+    const evt = new Date(eventData.date);
+    if (eventData.time) {
+      const [h, m] = eventData.time.split(':').map(Number);
+      evt.setHours(h, m, 0, 0);
+    }
+    return (evt.getTime() - Date.now()) / 3_600_000;
+  }, [eventData.date, eventData.time]);
+
+  const canCancel = eventData.hasPaidOrder
+    && eventData.status !== 'CANCELED'
+    && hoursUntilEvent !== null
+    && hoursUntilEvent > 24;
+
   const countdown = (() => {
     if (daysUntil === null) return null;
     if (daysUntil === 0) return { text: "Today's the day! 🎉", color: 'hsl(155,42%,20%)' };
@@ -501,6 +757,16 @@ export function EventPlanScreen({ event, initialPlan, onNavigate, onEventUpdate 
           onSave={handleEventSave}
         />
       )}
+      {cancelOpen && (
+        <CancelBookingModal
+          event={eventData}
+          onClose={() => setCancelOpen(false)}
+          onCancelled={() => {
+            setCancelOpen(false);
+            onNavigate('my-events');
+          }}
+        />
+      )}
 
       <main className='max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10'>
 
@@ -512,23 +778,37 @@ export function EventPlanScreen({ event, initialPlan, onNavigate, onEventUpdate 
               {isPackageEvent ? 'Package Booking' : 'Your Event Plan'}
             </span>
           </div>
-          <div className='flex items-start justify-between gap-4'>
+          <div className='flex items-start justify-between gap-4 flex-wrap'>
             <h1 className='font-serif text-4xl font-bold' style={{ color: 'hsl(155,45%,13%)' }}>
               {EVENT_EMOJIS[eventData.type] ?? '🎉'} {eventData.name}
             </h1>
-            {eventData.hasPaidOrder && (
-              <button
-                onClick={() => setEditOpen(true)}
-                className='shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:scale-[1.03] mt-1'
-                style={{
-                  background: 'hsl(155,38%,18%)',
-                  color: 'rgba(255,255,255,0.88)',
-                  fontFamily: 'Inter, sans-serif',
-                }}
-              >
-                <Pencil className='w-3 h-3' />
-                Edit Event
-              </button>
+            {eventData.hasPaidOrder && eventData.status !== 'CANCELED' && (
+              <div className='flex items-center gap-2 shrink-0 mt-1'>
+                <button
+                  onClick={() => setEditOpen(true)}
+                  className='flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:scale-[1.03]'
+                  style={{ background: 'hsl(155,38%,18%)', color: 'rgba(255,255,255,0.88)', fontFamily: 'Inter, sans-serif' }}
+                >
+                  <Pencil className='w-3 h-3' />
+                  Edit Event
+                </button>
+                <button
+                  onClick={() => canCancel && setCancelOpen(true)}
+                  disabled={!canCancel}
+                  title={!canCancel ? 'Cancellation not available within 24 hours of the event' : 'Cancel this booking'}
+                  className='flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:scale-[1.03] disabled:opacity-40 disabled:cursor-not-allowed'
+                  style={{ background: 'hsl(0,55%,42%)', color: 'white', fontFamily: 'Inter, sans-serif' }}
+                >
+                  <X className='w-3 h-3' />
+                  Cancel Booking
+                </button>
+              </div>
+            )}
+            {eventData.status === 'CANCELED' && (
+              <span className='shrink-0 mt-1 px-3 py-1.5 rounded-xl text-xs font-bold'
+                style={{ background: 'hsl(0,55%,95%)', color: 'hsl(0,55%,38%)', fontFamily: 'Inter, sans-serif', border: '1.5px solid hsl(0,50%,82%)' }}>
+                ✕ Cancelled
+              </span>
             )}
           </div>
           <div className='mt-4 flex flex-wrap gap-4'>

@@ -180,8 +180,9 @@ export function DashboardScreen({ user, events, onNavigate }: DashboardScreenPro
           ) : (
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
               {events.map((event) => {
-                const isPaid      = event.hasPaidOrder === true;
-                const accentColor = TYPE_COLORS[event.type] ?? 'hsl(155,42%,20%)';
+                const isCanceled  = event.status === 'CANCELED';
+                const isPaid      = event.hasPaidOrder === true && !isCanceled;
+                const accentColor = isCanceled ? 'hsl(0,0%,60%)' : (TYPE_COLORS[event.type] ?? 'hsl(155,42%,20%)');
                 const totalSteps  = event.planStepsTotal ?? 0;
                 const doneSteps   = event.planStepsDone ?? 0;
                 const progressPct = totalSteps > 0 ? Math.round(doneSteps / totalSteps * 100) : 0;
@@ -211,7 +212,12 @@ export function DashboardScreen({ user, events, onNavigate }: DashboardScreenPro
                           }}>
                           {EVENT_EMOJIS[event.type] ?? '🎉'} {event.type.replace(/_/g, ' ')}
                         </span>
-                        {isPaid && (
+                        {isCanceled ? (
+                          <span className='text-xs font-bold px-2.5 py-0.5 rounded-full'
+                            style={{ background: 'hsl(0,55%,95%)', color: 'hsl(0,55%,38%)', fontFamily: 'Inter, sans-serif' }}>
+                            ✕ Cancelled
+                          </span>
+                        ) : isPaid && (
                           <span className='text-xs font-bold px-2.5 py-0.5 rounded-full'
                             style={{ background: 'hsl(142,60%,94%)', color: 'hsl(142,65%,22%)', fontFamily: 'Inter, sans-serif' }}>
                             ✓ Paid
@@ -232,12 +238,13 @@ export function DashboardScreen({ user, events, onNavigate }: DashboardScreenPro
                           <Clock className='w-3.5 h-3.5 shrink-0' style={{ color: 'hsl(155,22%,46%)' }} />
                           <span>{event.time}</span>
                         </div>
-                        {event.venue && event.venue !== 'To be determined' && (
-                          <div className='flex items-center gap-2 text-sm' style={{ color: 'hsl(150,8%,48%)', fontFamily: 'Inter, sans-serif' }}>
-                            <MapPin className='w-3.5 h-3.5 shrink-0' style={{ color: 'hsl(155,22%,46%)' }} />
-                            <span className='truncate'>{event.venue}</span>
-                          </div>
-                        )}
+                        <div className='flex items-center gap-2 text-sm' style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <MapPin className='w-3.5 h-3.5 shrink-0' style={{ color: 'hsl(155,22%,46%)' }} />
+                          {event.venue && event.venue !== 'To be determined'
+                            ? <span className='truncate' style={{ color: 'hsl(150,8%,48%)' }}>{event.venue}</span>
+                            : <span className='italic' style={{ color: 'hsl(150,8%,68%)' }}>Venue to be confirmed</span>
+                          }
+                        </div>
                         {event.guestCount != null && (
                           <div className='flex items-center gap-2 text-sm' style={{ color: 'hsl(150,8%,48%)', fontFamily: 'Inter, sans-serif' }}>
                             <Users className='w-3.5 h-3.5 shrink-0' style={{ color: 'hsl(155,22%,46%)' }} />
@@ -262,7 +269,7 @@ export function DashboardScreen({ user, events, onNavigate }: DashboardScreenPro
                           <div
                             className='h-full rounded-full transition-all duration-500'
                             style={{
-                              width: `${progressPct > 0 ? progressPct : (isPaid ? 15 : 5)}%`,
+                              width: `${progressPct}%`,
                               background: isPaid
                                 ? `linear-gradient(90deg, ${accentColor}, hsl(43,60%,62%))`
                                 : 'linear-gradient(90deg, hsl(155,42%,20%), hsl(155,33%,38%))',

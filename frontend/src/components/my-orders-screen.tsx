@@ -250,6 +250,21 @@ function PackageOrderCard({ order, index }: { order: Order; index: number }) {
               ${order.totalAmount.toLocaleString()}
             </span>
           </div>
+          {order.status === 'CANCELED' && order.refundAmount != null && (
+            <div className='mt-3 pt-3 border-t space-y-1.5' style={{ borderColor: 'hsl(0,50%,88%)' }}>
+              <div className='flex justify-between text-xs' style={{ color: 'hsl(0,55%,45%)', fontFamily: 'Inter, sans-serif' }}>
+                <span>Cancellation fee (10%)</span>
+                <span>−${(order.cancellationFee ?? 0).toFixed(2)}</span>
+              </div>
+              <div className='flex justify-between text-sm font-bold'>
+                <span style={{ color: 'hsl(155,45%,13%)', fontFamily: 'Inter, sans-serif' }}>Refund issued</span>
+                <span style={{ color: 'hsl(142,60%,28%)', fontFamily: 'Inter, sans-serif' }}>${order.refundAmount.toFixed(2)}</span>
+              </div>
+              <p className='text-xs' style={{ color: 'hsl(150,8%,52%)', fontFamily: 'Inter, sans-serif' }}>
+                Refund will appear on your card within 3–5 business days.
+              </p>
+            </div>
+          )}
           {['PAID', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(order.status) && (
             <p className='text-xs text-center pt-1' style={{ color: 'hsl(155,30%,42%)', fontFamily: 'Inter, sans-serif' }}>
               ✓ Your event plan is active — view it in <strong>My Events</strong>

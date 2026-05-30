@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { body, param, validationResult } from 'express-validator';
 import prisma from '../config/database';
 import stripe from '../lib/stripe';
+import { sendMail } from '../lib/mailer';
+import { cancellationEmail } from '../lib/email-templates';
 
 const router = Router();
 
@@ -218,6 +220,101 @@ router.get(
     } catch (err) {
       console.error('GET /orders/:id', err);
       res.status(500).json({ success: false, message: 'Failed to fetch order' });
+    }
+  }
+);
+
+// POST /api/orders/:id/cancel — customer self-service cancellation with 10% fee + Stripe refund
+router.post(
+  '/:id/cancel',
+  [param('id').isUUID().withMessage('Invalid order ID')],
+  async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, message: errors.array()[0].msg });
+    }
+
+    try {
+      const order = await prisma.order.findFirst({
+        where:   { id: req.params.id, userId: req.user!.userId, status: 'PAID' },
+        include: {
+          payment: true,
+          event:   { select: { id: true, name: true, date: true, time: true, status: true } },
+          user:    { select: { name: true, email: true } },
+        },
+      });
+
+      if (!order) {
+        return res.status(404).json({ success: false, message: 'Paid order not found' });
+      }
+
+      // Enforce 24-hour cancellation window
+      if (order.event) {
+        const eventDateTime = new Date(order.event.date);
+        // Incorporate event time into the check
+        const [hours, minutes] = (order.event.time ?? '00:00').split(':').map(Number);
+        eventDateTime.setHours(hours, minutes, 0, 0);
+        const hoursUntilEvent = (eventDateTime.getTime() - Date.now()) / 3_600_000;
+        if (hoursUntilEvent <= 24) {
+          return res.status(400).json({
+            success: false,
+            message: 'Cancellations are not allowed within 24 hours of the event',
+          });
+        }
+      }
+
+      const paymentIntentId = order.payment?.paymentIntentId;
+      if (!paymentIntentId) {
+        return res.status(400).json({ success: false, message: 'No payment record found for this order' });
+      }
+
+      const totalAmount    = Number(order.totalAmount);
+      const cancellationFee = Math.round(totalAmount * 0.10 * 100) / 100;
+      const refundAmount    = Math.round((totalAmount - cancellationFee) * 100) / 100;
+
+      // Issue partial Stripe refund (90%)
+      const refund = await stripe.refunds.create({
+        payment_intent: paymentIntentId,
+        amount:         Math.round(refundAmount * 100),
+      });
+
+      // Update order + event in one transaction
+      await prisma.$transaction([
+        prisma.order.update({
+          where: { id: order.id },
+          data:  {
+            status:        'CANCELED',
+            paymentStatus: 'REFUNDED',
+            ...(({ cancellationFee, refundAmount }) => ({ cancellationFee, refundAmount }))({ cancellationFee, refundAmount }),
+          } as any,
+        }),
+        ...(order.event
+          ? [prisma.event.update({ where: { id: order.event.id }, data: { status: 'CANCELED' } })]
+          : []),
+      ]);
+
+      // Send cancellation confirmation email
+      if (order.user?.email) {
+        const { subject, html } = cancellationEmail({
+          customerName:    order.user.name,
+          eventName:       order.event?.name ?? 'your event',
+          orderNumber:     order.orderNumber,
+          totalPaid:       totalAmount,
+          cancellationFee,
+          refundAmount,
+        });
+        await sendMail({ to: order.user.email, subject, html }).catch(err =>
+          console.error('[mailer] cancellation email failed:', err)
+        );
+      }
+
+      return res.json({
+        success: true,
+        data: { cancellationFee, refundAmount, stripeRefundId: refund.id },
+      });
+    } catch (err) {
+      console.error('POST /orders/:id/cancel', err);
+      return res.status(500).json({ success: false, message: 'Failed to cancel order' });
     }
   }
 );
