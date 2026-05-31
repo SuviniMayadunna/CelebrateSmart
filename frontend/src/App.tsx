@@ -6,11 +6,6 @@ import { LoginScreen } from '@/components/login-screen';
 import { RegistrationScreen } from '@/components/registration-screen';
 import { DashboardScreen } from '@/components/dashboard-screen';
 import { MyEventsScreen } from '@/components/my-events-screen';
-import { EventTemplateScreen } from '@/components/event-template-screen';
-import { EventCreationScreen } from '@/components/event-creation-screen';
-import { EventPlanningScreen } from '@/components/event-planning-screen';
-import { EventPlanViewer } from '@/components/event-plan-viewer';
-import { EventPlanScreen } from '@/components/event-plan-screen';
 import { ShopScreen } from '@/components/shop-screen';
 import { CartScreen } from '@/components/cart-screen';
 import { CheckoutScreen } from '@/components/checkout-screen';
@@ -19,6 +14,8 @@ import { MyOrdersScreen } from '@/components/my-orders-screen';
 import { ProfileScreen } from '@/components/profile-screen';
 import { PackagePickerScreen } from '@/components/package-picker-screen';
 import { PackageCustomizerScreen } from '@/components/package-customizer-screen';
+import { EventWorkspace } from '@/components/workspace/event-workspace';
+import { RsvpPage }       from '@/components/rsvp-page';
 import { AdminDashboard } from '@/components/admin-dashboard';
 import { Navigation } from '@/components/navigation';
 import { toast } from '@/hooks/use-toast';
@@ -30,9 +27,9 @@ import type { Product as ApiProduct, Package, EventPlan } from '@/lib/api';
 
 export type AppScreen =
   | 'welcome' | 'login' | 'register' | 'dashboard' | 'my-events'
-  | 'event-templates' | 'event-creation' | 'event-planning' | 'event-plan-viewer' | 'event-plan'
+  | 'rsvp'
   | 'shop' | 'cart' | 'checkout' | 'confirmation' | 'my-orders' | 'profile'
-  | 'package-picker' | 'package-customizer' | 'admin-dashboard';
+  | 'package-picker' | 'package-customizer' | 'event-workspace' | 'admin-dashboard';
 
 function screenToPath(screen: AppScreen, event?: { id: string } | null): string {
   switch (screen) {
@@ -41,11 +38,6 @@ function screenToPath(screen: AppScreen, event?: { id: string } | null): string 
     case 'register':           return '/register';
     case 'dashboard':          return '/dashboard';
     case 'my-events':          return '/events';
-    case 'event-templates':    return '/templates';
-    case 'event-creation':     return '/events/new';
-    case 'event-planning':     return event?.id ? `/events/${event.id}/planning` : '/events';
-    case 'event-plan-viewer':  return event?.id ? `/events/${event.id}/viewer` : '/events';
-    case 'event-plan':         return event?.id ? `/events/${event.id}/plan`   : '/events';
     case 'shop':               return '/shop';
     case 'cart':               return '/cart';
     case 'checkout':           return '/checkout';
@@ -54,12 +46,14 @@ function screenToPath(screen: AppScreen, event?: { id: string } | null): string 
     case 'profile':            return '/profile';
     case 'package-picker':     return '/packages';
     case 'package-customizer': return '/packages/customize';
+    case 'event-workspace':    return event?.id ? `/events/${event.id}/workspace` : '/events';
+    case 'rsvp':               return '/rsvp';
     case 'admin-dashboard':    return '/admin';
     default:                   return '/dashboard';
   }
 }
 
-interface ParsedPath { screen: AppScreen; eventId?: string; adminTab?: string }
+interface ParsedPath { screen: AppScreen; eventId?: string; adminTab?: string; token?: string }
 
 function pathToScreen(pathname: string): ParsedPath | null {
   if (pathname === '/')                return { screen: 'welcome' };
@@ -67,8 +61,6 @@ function pathToScreen(pathname: string): ParsedPath | null {
   if (pathname === '/register')        return { screen: 'register' };
   if (pathname === '/dashboard')       return { screen: 'dashboard' };
   if (pathname === '/events')          return { screen: 'my-events' };
-  if (pathname === '/events/new')      return { screen: 'event-creation' };
-  if (pathname === '/templates')       return { screen: 'event-templates' };
   if (pathname === '/shop')            return { screen: 'shop' };
   if (pathname === '/cart')            return { screen: 'cart' };
   if (pathname === '/checkout')        return { screen: 'checkout' };
@@ -81,14 +73,11 @@ function pathToScreen(pathname: string): ParsedPath | null {
   if (adminMatch)                      return { screen: 'admin-dashboard', adminTab: adminMatch[1] };
   if (pathname === '/confirmation')    return { screen: 'confirmation' };
 
-  const planningMatch  = pathname.match(/^\/events\/([^/]+)\/planning$/);
-  if (planningMatch) return { screen: 'event-planning',   eventId: planningMatch[1] };
+  const workspaceMatch = pathname.match(/^\/events\/([^/]+)\/workspace$/);
+  if (workspaceMatch) return { screen: 'event-workspace', eventId: workspaceMatch[1] };
 
-  const viewerMatch    = pathname.match(/^\/events\/([^/]+)\/viewer$/);
-  if (viewerMatch)  return { screen: 'event-plan-viewer', eventId: viewerMatch[1] };
-
-  const planMatch      = pathname.match(/^\/events\/([^/]+)\/plan$/);
-  if (planMatch)    return { screen: 'event-plan',        eventId: planMatch[1] };
+  const rsvpMatch = pathname.match(/^\/rsvp\/([^/]+)$/);
+  if (rsvpMatch) return { screen: 'rsvp', token: rsvpMatch[1] };
 
   return null;
 }
@@ -150,13 +139,11 @@ export default function App() {
   const [cart,          setCart]          = useState<CartItem[]>([]);
   const [events,        setEvents]        = useState<EventData[]>([]);
   const [adminTab,      setAdminTab]      = useState<string>('overview');
-  const [returnToPlanning, setReturnToPlanning] = useState(false);
-  const [shopCategory,  setShopCategory]  = useState<string | null>(null);
-  const [selectedEventType, setSelectedEventType] = useState<string | null>(null);
   const [lastOrderId,   setLastOrderId]   = useState('');
   const [lastOrderItems, setLastOrderItems] = useState<CartItem[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [_currentPlan,   setCurrentPlan]   = useState<EventPlan | null>(null);
+  const [currentToken,   setCurrentToken]  = useState<string | null>(null);
 
   const [loginLoading,    setLoginLoading]    = useState(false);
   const [loginError,      setLoginError]      = useState<string | null>(null);
@@ -169,7 +156,7 @@ export default function App() {
 
     const parsed        = pathToScreen(location.pathname);
     const isGuestOnly   = ['/login', '/register'].includes(location.pathname);
-    const isPublic      = ['/', '/login', '/register'].includes(location.pathname);
+    const isPublic      = ['/', '/login', '/register'].includes(location.pathname) || location.pathname.startsWith('/rsvp/');
 
     if (!user) {
       if (!isPublic) {
@@ -197,6 +184,7 @@ export default function App() {
 
     setCurrentScreen(parsed.screen);
     if (parsed.adminTab) setAdminTab(parsed.adminTab);
+    if (parsed.token)    setCurrentToken(parsed.token);
 
     // Restore package-customizer from sessionStorage
     if (parsed.screen === 'package-customizer' && !selectedPackage) {
@@ -253,9 +241,8 @@ export default function App() {
 
   // ── Navigation ───────────────────────────────────────────────────────────────
 
-  const handleNavigate = (screen: AppScreen, event?: EventData, eventType?: string) => {
+  const handleNavigate = (screen: AppScreen, event?: EventData) => {
     if (event) setCurrentEvent(event);
-    if (eventType !== undefined) setSelectedEventType(eventType);
     setCurrentScreen(screen);
     navigate(screenToPath(screen, event ?? currentEvent));
     // Re-fetch events list when returning to My Events or Dashboard so plan step progress is current
@@ -309,45 +296,7 @@ export default function App() {
 
   // ── Events ───────────────────────────────────────────────────────────────────
 
-  const handleCreateEvent = async (eventData: Omit<EventData, 'id' | 'completedTasks'>) => {
-    try {
-      const res = await eventsAPI.create({
-        name: eventData.name, type: eventData.type, date: eventData.date,
-        time: eventData.time, venue: eventData.venue, notes: eventData.notes,
-      });
-      const newEvent = res.data.event as EventData;
-      setCurrentEvent(newEvent);
-      setEvents(prev => [newEvent, ...prev]);
-      handleNavigate('event-planning', newEvent);
-    } catch (err) {
-      toast({ variant: 'destructive', title: 'Failed to create event', description: err instanceof Error ? err.message : 'Please try again.' });
-    }
-  };
-
-  const handleCompleteTask = async (taskId: string, venueDetails?: string) => {
-    if (!currentEvent) return;
-    try {
-      const res = await eventsAPI.completeTask(currentEvent.id, taskId, venueDetails ? { venueBooked: venueDetails } : undefined);
-      const updated = res.data.event as EventData;
-      setCurrentEvent(updated);
-      setEvents(prev => prev.map(e => (e.id === updated.id ? updated : e)));
-    } catch {
-      const updated = {
-        ...currentEvent,
-        completedTasks: [...currentEvent.completedTasks, taskId],
-        ...(venueDetails && taskId === 'venue' ? { venueBooked: venueDetails } : {}),
-      };
-      setCurrentEvent(updated);
-      setEvents(prev => prev.map(e => (e.id === updated.id ? updated : e)));
-    }
-  };
-
   // ── Cart ─────────────────────────────────────────────────────────────────────
-
-  const PRODUCT_CATEGORY_TO_TASK: Record<string, string> = {
-    CAKES: 'cake', DECORATIONS: 'decorations', FOOD: 'food',
-    ENTERTAINMENT: 'entertainment', PHOTOGRAPHY: 'photography', VENUE: 'venue',
-  };
 
   const handleAddToCart = async (product: ApiProduct, quantity = 1) => {
     const eventId = currentEvent?.id;
@@ -355,16 +304,6 @@ export default function App() {
       await cartAPI.addItem(product.id, quantity, eventId);
       const res = await cartAPI.get();
       setCart(res.data.items);
-
-      if (returnToPlanning && currentEvent) {
-        const taskId = PRODUCT_CATEGORY_TO_TASK[product.category];
-        if (taskId && !currentEvent.completedTasks.includes(taskId)) {
-          const venueDetails = taskId === 'venue' ? (product.venueAddress ?? product.name) : undefined;
-          await handleCompleteTask(taskId, venueDetails ?? undefined);
-        }
-        setReturnToPlanning(false);
-        handleNavigate('event-planning');
-      }
     } catch (err) {
       toast({ variant: 'destructive', title: 'Failed to add to cart', description: err instanceof Error ? err.message : 'Please try again.' });
     }
@@ -410,27 +349,10 @@ export default function App() {
         return <DashboardScreen user={user} events={events} onNavigate={handleNavigate} onLogout={handleLogout} />;
       case 'my-events':
         return <MyEventsScreen events={events} onNavigate={handleNavigate} />;
-      case 'event-templates':
-        return <EventTemplateScreen onNavigate={handleNavigate} />;
-      case 'event-creation':
-        return <EventCreationScreen onNavigate={handleNavigate} onCreate={handleCreateEvent} preselectedType={selectedEventType} />;
-      case 'event-planning':
-        return currentEvent && (
-          <EventPlanningScreen
-            event={currentEvent}
-            onCompleteTask={handleCompleteTask}
-            onNavigate={handleNavigate}
-            onShop={() => { setReturnToPlanning(true); setShopCategory(null); handleNavigate('shop'); }}
-            onShopWithCategory={(category: string) => { setReturnToPlanning(true); setShopCategory(category); handleNavigate('shop'); }}
-          />
-        );
-      case 'event-plan-viewer':
-        return currentEvent && <EventPlanViewer event={currentEvent} onNavigate={handleNavigate} />;
-      case 'event-plan':
+      case 'event-workspace':
         return currentEvent ? (
-          <EventPlanScreen
+          <EventWorkspace
             event={currentEvent}
-            initialPlan={null}
             onNavigate={handleNavigate}
             onEventUpdate={(updated) => {
               setCurrentEvent(updated);
@@ -438,8 +360,10 @@ export default function App() {
             }}
           />
         ) : null;
+      case 'rsvp':
+        return <RsvpPage token={currentToken ?? ''} />;
       case 'shop':
-        return <ShopScreen onNavigate={handleNavigate} onAddToCart={handleAddToCart} event={currentEvent} returnToPlanning={returnToPlanning} initialCategory={shopCategory} cartItems={cart} />;
+        return <ShopScreen onNavigate={handleNavigate} onAddToCart={handleAddToCart} event={currentEvent} cartItems={cart} />;
       case 'cart':
         return (
           <CartScreen
@@ -480,8 +404,8 @@ export default function App() {
               setCurrentPlan(plan);
               setEvents(prev => [event, ...prev.filter(e => e.id !== event.id)]);
               sessionStorage.removeItem('_cs_package');
-              navigate(`/events/${event.id}/plan`);
-              setCurrentScreen('event-plan');
+              navigate(`/events/${event.id}/workspace`);
+              setCurrentScreen('event-workspace');
             }}
           />
         ) : null;
@@ -508,7 +432,7 @@ export default function App() {
     );
   }
 
-  const showNavigation = !['welcome', 'login', 'register'].includes(currentScreen);
+  const showNavigation = !['welcome', 'login', 'register', 'rsvp'].includes(currentScreen);
 
   return (
     <div className='min-h-screen bg-background text-foreground'>

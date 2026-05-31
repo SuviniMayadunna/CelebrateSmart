@@ -77,6 +77,9 @@ model Event {
   cartItems    CartItem[]
   orders       Order[]
   plan         EventPlan?
+  visionBoard  VisionBoard?
+  budget       EventBudget?
+  guestList    GuestList?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
@@ -372,4 +375,143 @@ enum PaymentState {
   FAILED
   CANCELED
   REFUNDED
+}
+
+// ─── EVENT WORKSPACE ─────────────────────────────────────────────────────────
+
+model VisionBoard {
+  id            String      @id @default(uuid())
+  eventId       String      @unique
+  event         Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  colorPalette  String[]
+  styleKeywords String[]
+  pins          VisionPin[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("vision_boards")
+}
+
+model VisionPin {
+  id        String      @id @default(uuid())
+  boardId   String
+  board     VisionBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  section   PinSection
+  imageUrl  String?
+  caption   String?
+  notes     String?
+  sortOrder Int         @default(0)
+  createdAt DateTime    @default(now())
+
+  @@index([boardId])
+  @@map("vision_pins")
+}
+
+enum PinSection {
+  MOOD
+  DECOR
+  OUTFIT
+  LAYOUT
+  FOOD
+  ENTERTAINMENT
+}
+
+model EventBudget {
+  id          String          @id @default(uuid())
+  eventId     String          @unique
+  event       Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  totalBudget Decimal         @default(0) @db.Decimal(10, 2)
+  currency    String          @default("usd")
+  expenses    BudgetExpense[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@map("event_budgets")
+}
+
+model BudgetExpense {
+  id          String          @id @default(uuid())
+  budgetId    String
+  budget      EventBudget     @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  category    ExpenseCategory
+  description String
+  amount      Decimal         @db.Decimal(10, 2)
+  paidAt      DateTime?
+  receiptNote String?
+  source      ExpenseSource   @default(MANUAL)
+  orderId     String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([budgetId])
+  @@map("budget_expenses")
+}
+
+enum ExpenseCategory {
+  VENUE
+  CATERING
+  PHOTOGRAPHY
+  DECORATIONS
+  ENTERTAINMENT
+  ATTIRE
+  INVITATIONS
+  MISCELLANEOUS
+}
+
+enum ExpenseSource {
+  MANUAL
+  ORDER
+}
+
+model GuestList {
+  id        String   @id @default(uuid())
+  eventId   String   @unique
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  guests    Guest[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("guest_lists")
+}
+
+model Guest {
+  id                  String        @id @default(uuid())
+  guestListId         String
+  guestList           GuestList     @relation(fields: [guestListId], references: [id], onDelete: Cascade)
+  name                String
+  email               String?
+  phone               String?
+  status              GuestStatus   @default(PENDING)
+  category            GuestCategory @default(FRIENDS)
+  tableNumber         String?
+  mealPreference      String?
+  dietaryRestrictions String?
+  plusOnes            Int           @default(0)
+  notes               String?
+  rsvpToken           String?       @unique
+  invitationSentAt    DateTime?
+  rsvpAt              DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([guestListId])
+  @@map("guests")
+}
+
+enum GuestStatus {
+  INVITED
+  CONFIRMED
+  DECLINED
+  PENDING
+  ATTENDED
+  NO_SHOW
+}
+
+enum GuestCategory {
+  FAMILY
+  RELATIVES
+  FRIENDS
+  COLLEAGUES
+  VIP
+  KIDS
 }

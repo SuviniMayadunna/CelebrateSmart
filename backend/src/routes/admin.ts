@@ -769,4 +769,71 @@ router.post(
   }
 );
 
+// ── Operations (MANAGEMENT plan steps) ──────────────────────────────────────
+
+router.get('/operations', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const events = await prisma.event.findMany({
+      where: { plan: { steps: { some: { category: 'MANAGEMENT' } } } },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        plan: {
+          include: {
+            steps: {
+              where: { category: 'MANAGEMENT' },
+              orderBy: { weeksBefore: 'desc' },
+            },
+          },
+        },
+      },
+      orderBy: { date: 'asc' },
+    });
+
+    const formatted = events.map(e => ({
+      id:   e.id,
+      name: e.name,
+      type: e.type,
+      date: e.date instanceof Date ? e.date.toISOString().slice(0, 10) : String(e.date),
+      customer: e.user,
+      managementSteps: (e.plan?.steps ?? []).map(s => ({
+        id:          s.id,
+        title:       s.title,
+        description: s.description,
+        weeksBefore: s.weeksBefore,
+        timeOfDay:   s.timeOfDay,
+        isCompleted: s.isCompleted,
+        completedAt: s.completedAt,
+      })),
+    }));
+
+    res.json({ success: true, data: { events: formatted } });
+  } catch {
+    res.status(500).json({ success: false, error: 'Failed to fetch operations' });
+  }
+});
+
+router.post('/operations/steps/:stepId/complete', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const step = await prisma.eventPlanStep.update({
+      where: { id: req.params.stepId },
+      data:  { isCompleted: true, completedAt: new Date() },
+    });
+    res.json({ success: true, data: { step } });
+  } catch {
+    res.status(500).json({ success: false, error: 'Failed to complete step' });
+  }
+});
+
+router.post('/operations/steps/:stepId/uncomplete', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const step = await prisma.eventPlanStep.update({
+      where: { id: req.params.stepId },
+      data:  { isCompleted: false, completedAt: null },
+    });
+    res.json({ success: true, data: { step } });
+  } catch {
+    res.status(500).json({ success: false, error: 'Failed to uncomplete step' });
+  }
+});
+
 export default router;

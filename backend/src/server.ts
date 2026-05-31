@@ -13,6 +13,10 @@ import templateRoutes from './routes/templates';
 import packageRoutes from './routes/packages';
 import stripeWebhookRoutes from './routes/stripe-webhook';
 import packagesPublicRoutes from './routes/packages-public';
+import workspaceRoutes from './routes/workspace';
+import visionBoardRoutes from './routes/vision-board';
+import budgetRoutes from './routes/budget';
+import guestRoutes from './routes/guests';
 import { authenticate, requireAdmin } from './middleware/auth';
 import { startNotificationWorker } from './workers/notification-worker';
 import { startReminderScheduler } from './workers/reminder-scheduler';
@@ -87,6 +91,10 @@ app.use('/api/orders',        authenticate, orderRoutes);
 app.use('/api/notifications', authenticate, notificationRoutes);
 app.use('/api/templates',    authenticate, templateRoutes);
 app.use('/api/packages',     authenticate, packageRoutes);
+app.use('/api/workspace',    authenticate, workspaceRoutes);
+app.use('/api/vision-board', authenticate, visionBoardRoutes);
+app.use('/api/budget',       authenticate, budgetRoutes);
+app.use('/api/guests',       guestRoutes); // public RSVP sub-routes don't use auth middleware; per-route auth handled inside
 
 // Protected route example (requires authentication)
 app.get('/api/protected', authenticate, (req: Request, res: Response) => {

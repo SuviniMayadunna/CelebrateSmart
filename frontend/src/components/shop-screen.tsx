@@ -38,15 +38,15 @@ interface ShopScreenProps {
   onNavigate: (screen: AppScreen) => void;
   onAddToCart: (product: Product, quantity?: number) => void;
   event: EventData | null;
-  returnToPlanning: boolean;
-  initialCategory: string | null;
+  returnToPlanning?: boolean;
+  initialCategory?: string | null;
   cartItems: CartItem[];
 }
 
 export function ShopScreen({ onAddToCart, event, returnToPlanning, initialCategory }: ShopScreenProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory ?? null);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'price-low' | 'price-high' | 'name'>('price-low');
 

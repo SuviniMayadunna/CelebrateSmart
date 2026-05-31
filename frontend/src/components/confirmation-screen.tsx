@@ -580,7 +580,7 @@ export function ConfirmationScreen({ onNavigate, cart, event, orderId: orderIdPr
                   Back to Dashboard
                 </Button>
                 <Button
-                  onClick={() => onNavigate('event-templates')}
+                  onClick={() => onNavigate('package-picker')}
                   variant='secondary'
                   className='flex-1 font-semibold'
                   size='lg'

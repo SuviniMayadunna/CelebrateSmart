@@ -1,12 +1,7 @@
 import { AppScreen, User, EventData } from '@/App';
-import { Calendar, Clock, MapPin, Plus, TrendingUp, CheckCircle, Users } from 'lucide-react';
+import { Calendar, Clock, MapPin, Plus, TrendingUp, Users, LayoutDashboard } from 'lucide-react';
 import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
+  Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle,
 } from '@/components/ui/empty';
 import { Button } from '@/components/ui/button';
 
@@ -33,16 +28,13 @@ export function DashboardScreen({ user, events, onNavigate }: DashboardScreenPro
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const inProgressEvents = events.filter(e => new Date(e.date) >= today).length;
-  const completedEvents  = events.filter(e => new Date(e.date) < today).length;
-
-  const handleEventClick = (event: EventData) => {
-    if (event.hasPaidOrder) {
-      onNavigate('event-plan', event);
-    } else {
-      onNavigate('event-planning', event);
-    }
-  };
+  // Only paid, non-canceled events
+  const paidEvents    = events.filter(e => e.hasPaidOrder && e.status !== 'CANCELED');
+  // Split into upcoming and past
+  const upcomingPaid  = paidEvents.filter(e => new Date(e.date) >= today);
+  const pastPaid      = paidEvents.filter(e => new Date(e.date) < today).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const upcomingCount = upcomingPaid.length;
+  const totalPaid     = paidEvents.length;
 
   return (
     <div className='min-h-screen bg-background'>
@@ -63,11 +55,11 @@ export function DashboardScreen({ user, events, onNavigate }: DashboardScreenPro
         </div>
 
         {/* Stats Cards */}
-        <div className='grid grid-cols-1 md:grid-cols-3 gap-6 mb-10'>
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-6 mb-10'>
           {[
             {
               label:    'Total Events',
-              value:    events.length,
+              value:    totalPaid,
               icon:     Calendar,
               bg:       'hsl(155,30%,96%)',
               border:   'hsl(155,25%,82%)',
@@ -75,31 +67,19 @@ export function DashboardScreen({ user, events, onNavigate }: DashboardScreenPro
               valColor: 'hsl(155,45%,13%)',
             },
             {
-              label:    'In Progress',
-              value:    inProgressEvents,
+              label:    'Upcoming',
+              value:    upcomingCount,
               icon:     TrendingUp,
               bg:       'hsl(43,74%,98%)',
               border:   'hsl(43,65%,80%)',
               iconBg:   'linear-gradient(135deg, hsl(43,74%,49%), hsl(38,65%,42%))',
               valColor: 'hsl(43,60%,28%)',
             },
-            {
-              label:    'Completed',
-              value:    completedEvents,
-              icon:     CheckCircle,
-              bg:       'hsl(142,40%,96%)',
-              border:   'hsl(142,35%,78%)',
-              iconBg:   'linear-gradient(135deg, hsl(142,60%,30%), hsl(142,50%,40%))',
-              valColor: 'hsl(142,60%,22%)',
-            },
           ].map((stat) => {
             const Icon = stat.icon;
             return (
-              <div
-                key={stat.label}
-                className='rounded-2xl p-6 shadow-sm'
-                style={{ background: stat.bg, border: `1.5px solid ${stat.border}` }}
-              >
+              <div key={stat.label} className='rounded-2xl p-6 shadow-sm'
+                style={{ background: stat.bg, border: `1.5px solid ${stat.border}` }}>
                 <div className='flex items-center justify-between mb-4'>
                   <div className='w-11 h-11 rounded-xl flex items-center justify-center'
                     style={{ background: stat.iconBg }}>
@@ -113,12 +93,10 @@ export function DashboardScreen({ user, events, onNavigate }: DashboardScreenPro
           })}
         </div>
 
-        {/* Next-action callout for upcoming paid event */}
+        {/* Next-action callout for soonest upcoming paid event */}
         {(() => {
-          const upcoming = events
-            .filter(e => e.hasPaidOrder === true && new Date(e.date) >= today)
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-          const next = upcoming[0];
+          const sorted = upcomingPaid.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          const next = sorted[0];
           if (!next) return null;
           const daysUntil = Math.ceil((new Date(next.date).getTime() - Date.now()) / 86400000);
           const subtitle =
@@ -136,35 +114,39 @@ export function DashboardScreen({ user, events, onNavigate }: DashboardScreenPro
                 </p>
                 <p className='text-sm text-muted-foreground mt-0.5'>{subtitle}</p>
               </div>
-              <Button onClick={() => onNavigate('event-plan', next)} variant='outline' className='font-semibold shrink-0'>
-                View Plan →
+              <Button onClick={() => onNavigate('event-workspace', next)} variant='outline' className='font-semibold shrink-0'>
+                Open Workspace →
               </Button>
             </div>
           );
         })()}
 
-        {/* Your Events */}
+        {/* Your Upcoming Events */}
         <div>
           <div className='flex items-center justify-between mb-6'>
-            <h2 className='text-3xl font-bold text-foreground'>Your Events</h2>
-            <Button onClick={() => onNavigate('event-templates')} className='font-bold'>
+            <h2 className='text-3xl font-bold text-foreground'>Upcoming Events</h2>
+            <Button onClick={() => onNavigate('package-picker')} className='font-bold'>
               <Plus className='w-5 h-5' />
               <span>New Event</span>
             </Button>
           </div>
 
-          {events.length === 0 ? (
+          {upcomingPaid.length === 0 ? (
             <Empty className='bg-card border border-dashed'>
               <EmptyHeader>
                 <EmptyMedia variant='icon'>
                   <Calendar className='size-5' />
                 </EmptyMedia>
-                <EmptyTitle>No events yet</EmptyTitle>
-                <EmptyDescription>Start planning your first celebration!</EmptyDescription>
+                <EmptyTitle>No upcoming events</EmptyTitle>
+                <EmptyDescription>
+                  {totalPaid > 0
+                    ? 'All your events have passed. Ready to plan your next celebration?'
+                    : 'Start planning your first celebration!'}
+                </EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
                 <button
-                  onClick={() => onNavigate('event-templates')}
+                  onClick={() => onNavigate('package-picker')}
                   className='px-6 py-3 rounded-2xl font-bold text-sm transition-all hover:scale-105 hover:opacity-90'
                   style={{
                     background: 'linear-gradient(135deg, hsl(43,74%,49%), hsl(38,65%,42%))',
@@ -173,54 +155,50 @@ export function DashboardScreen({ user, events, onNavigate }: DashboardScreenPro
                     boxShadow: '0 4px 16px hsl(43,74%,49%,0.35)',
                   }}
                 >
-                  + Create Your First Event
+                  {totalPaid > 0 ? '+ Plan Next Event' : '+ Plan Your First Event'}
                 </button>
               </EmptyContent>
             </Empty>
           ) : (
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-              {events.map((event) => {
-                const isCanceled  = event.status === 'CANCELED';
-                const isPaid      = event.hasPaidOrder === true && !isCanceled;
-                const accentColor = isCanceled ? 'hsl(0,0%,60%)' : (TYPE_COLORS[event.type] ?? 'hsl(155,42%,20%)');
+              {upcomingPaid.map((event) => {
+                const accentColor = TYPE_COLORS[event.type] ?? 'hsl(155,42%,20%)';
                 const totalSteps  = event.planStepsTotal ?? 0;
                 const doneSteps   = event.planStepsDone ?? 0;
                 const progressPct = totalSteps > 0 ? Math.round(doneSteps / totalSteps * 100) : 0;
+                const daysUntil   = Math.ceil((new Date(event.date).getTime() - Date.now()) / 86400000);
 
                 return (
                   <div
                     key={event.id}
-                    onClick={() => handleEventClick(event)}
+                    onClick={() => onNavigate('event-workspace', event)}
                     className='group bg-white rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5'
                     style={{ border: '1px solid hsl(150,12%,88%)' }}
                   >
-                    {/* Colored top accent */}
                     <div className='h-1.5' style={{
-                      background: isPaid
-                        ? `linear-gradient(90deg, ${accentColor}, hsl(43,74%,65%))`
-                        : 'linear-gradient(90deg, hsl(155,42%,20%), hsl(155,33%,35%))',
+                      background: `linear-gradient(90deg, ${accentColor}, hsl(43,74%,65%))`,
                     }} />
 
                     <div className='p-5'>
-                      {/* Badges */}
                       <div className='flex items-center gap-2 mb-3 flex-wrap'>
                         <span className='text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wide'
-                          style={{
-                            background: `${accentColor}22`,
-                            color: accentColor,
-                            fontFamily: 'Inter, sans-serif',
-                          }}>
+                          style={{ background: `${accentColor}22`, color: accentColor, fontFamily: 'Inter, sans-serif' }}>
                           {EVENT_EMOJIS[event.type] ?? '🎉'} {event.type.replace(/_/g, ' ')}
                         </span>
-                        {isCanceled ? (
+                        <span className='text-xs font-bold px-2.5 py-0.5 rounded-full'
+                          style={{ background: 'hsl(142,60%,94%)', color: 'hsl(142,65%,22%)', fontFamily: 'Inter, sans-serif' }}>
+                          ✓ Paid
+                        </span>
+                        {daysUntil <= 7 && daysUntil > 0 && (
                           <span className='text-xs font-bold px-2.5 py-0.5 rounded-full'
                             style={{ background: 'hsl(0,55%,95%)', color: 'hsl(0,55%,38%)', fontFamily: 'Inter, sans-serif' }}>
-                            ✕ Cancelled
+                            {daysUntil}d away
                           </span>
-                        ) : isPaid && (
+                        )}
+                        {daysUntil === 0 && (
                           <span className='text-xs font-bold px-2.5 py-0.5 rounded-full'
                             style={{ background: 'hsl(142,60%,94%)', color: 'hsl(142,65%,22%)', fontFamily: 'Inter, sans-serif' }}>
-                            ✓ Paid
+                            Today! 🎉
                           </span>
                         )}
                       </div>
@@ -231,51 +209,61 @@ export function DashboardScreen({ user, events, onNavigate }: DashboardScreenPro
                       </h3>
 
                       <div className='space-y-1.5 mb-4'>
-                        <div className='flex items-center gap-2 text-sm' style={{ color: 'hsl(150,8%,48%)', fontFamily: 'Inter, sans-serif' }}>
+                        <div className='flex items-center gap-2 text-sm' style={{ color: 'hsl(150,8%,40%)', fontFamily: 'Inter, sans-serif' }}>
                           <Calendar className='w-3.5 h-3.5 shrink-0' style={{ color: 'hsl(155,22%,46%)' }} />
                           <span>{event.date}</span>
-                          <span className='opacity-30'>·</span>
+                          <span style={{ color: '#cbd5e1' }}>·</span>
                           <Clock className='w-3.5 h-3.5 shrink-0' style={{ color: 'hsl(155,22%,46%)' }} />
                           <span>{event.time}</span>
                         </div>
                         <div className='flex items-center gap-2 text-sm' style={{ fontFamily: 'Inter, sans-serif' }}>
                           <MapPin className='w-3.5 h-3.5 shrink-0' style={{ color: 'hsl(155,22%,46%)' }} />
                           {event.venue && event.venue !== 'To be determined'
-                            ? <span className='truncate' style={{ color: 'hsl(150,8%,48%)' }}>{event.venue}</span>
-                            : <span className='italic' style={{ color: 'hsl(150,8%,68%)' }}>Venue to be confirmed</span>
+                            ? <span className='truncate' style={{ color: 'hsl(150,8%,40%)' }}>{event.venue}</span>
+                            : <span className='italic' style={{ color: 'hsl(150,8%,55%)' }}>Venue to be confirmed</span>
                           }
                         </div>
                         {event.guestCount != null && (
-                          <div className='flex items-center gap-2 text-sm' style={{ color: 'hsl(150,8%,48%)', fontFamily: 'Inter, sans-serif' }}>
+                          <div className='flex items-center gap-2 text-sm' style={{ color: 'hsl(150,8%,40%)', fontFamily: 'Inter, sans-serif' }}>
                             <Users className='w-3.5 h-3.5 shrink-0' style={{ color: 'hsl(155,22%,46%)' }} />
                             <span>{event.guestCount} guests</span>
                           </div>
                         )}
                       </div>
 
-                      {/* Progress bar */}
+                      {/* Readiness / progress */}
                       <div className='pt-3 border-t' style={{ borderColor: 'hsl(150,12%,92%)' }}>
                         <div className='flex items-center justify-between mb-1.5'>
                           <span className='text-xs font-semibold uppercase tracking-wide'
-                            style={{ color: 'hsl(150,8%,55%)', fontFamily: 'Inter, sans-serif' }}>
+                            style={{ color: 'hsl(150,8%,45%)', fontFamily: 'Inter, sans-serif' }}>
                             PROGRESS
                           </span>
                           <span className='text-xs font-bold'
-                            style={{ color: isPaid ? 'hsl(155,38%,27%)' : 'hsl(155,22%,46%)', fontFamily: 'Inter, sans-serif' }}>
-                            {totalSteps > 0 ? `${progressPct}%` : (isPaid ? 'Active' : 'Planning')}
+                            style={{ color: progressPct >= 80 ? 'hsl(142,65%,28%)' : progressPct >= 40 ? 'hsl(43,74%,38%)' : 'hsl(155,38%,27%)', fontFamily: 'Inter, sans-serif' }}>
+                            {totalSteps > 0 ? `${progressPct}%` : 'Active'}
                           </span>
                         </div>
                         <div className='h-1.5 rounded-full overflow-hidden' style={{ background: 'hsl(150,12%,90%)' }}>
-                          <div
-                            className='h-full rounded-full transition-all duration-500'
-                            style={{
-                              width: `${progressPct}%`,
-                              background: isPaid
-                                ? `linear-gradient(90deg, ${accentColor}, hsl(43,60%,62%))`
-                                : 'linear-gradient(90deg, hsl(155,42%,20%), hsl(155,33%,38%))',
-                            }}
-                          />
+                          <div className='h-full rounded-full transition-all duration-500'
+                            style={{ width: `${progressPct}%`, background: `linear-gradient(90deg, ${accentColor}, hsl(43,60%,62%))` }} />
                         </div>
+                      </div>
+
+                      {/* Open Workspace */}
+                      <div className='mt-4 pt-3 border-t' style={{ borderColor: 'hsl(150,12%,92%)' }}>
+                        <button
+                          onClick={e => { e.stopPropagation(); onNavigate('event-workspace', event); }}
+                          className='w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-bold transition-all hover:opacity-80'
+                          style={{
+                            background: `linear-gradient(90deg, ${accentColor}18, hsl(43,74%,49%)18)`,
+                            color: accentColor,
+                            border: `1px solid ${accentColor}40`,
+                            fontFamily: 'Inter, sans-serif',
+                          }}
+                        >
+                          <LayoutDashboard className='w-3.5 h-3.5' />
+                          Open Workspace
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -284,6 +272,88 @@ export function DashboardScreen({ user, events, onNavigate }: DashboardScreenPro
             </div>
           )}
         </div>
+
+        {/* Past Events */}
+        {pastPaid.length > 0 && (
+          <div className='mt-12'>
+            <div className='flex items-center gap-3 mb-6'>
+              <h2 className='text-2xl font-bold text-foreground'>Past Events</h2>
+              <span className='text-xs font-bold px-2.5 py-1 rounded-full'
+                style={{ background: '#f1f5f9', color: '#64748b' }}>
+                {pastPaid.length}
+              </span>
+            </div>
+            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+              {pastPaid.map((event) => {
+                return (
+                  <div
+                    key={event.id}
+                    onClick={() => onNavigate('event-workspace', event)}
+                    className='group bg-white rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-md opacity-75 hover:opacity-100'
+                    style={{ border: '1px solid #e2e8f0' }}
+                  >
+                    <div className='h-1.5' style={{ background: '#e2e8f0' }} />
+                    <div className='p-5'>
+                      <div className='flex items-center gap-2 mb-3 flex-wrap'>
+                        <span className='text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wide'
+                          style={{ background: '#f1f5f9', color: '#64748b', fontFamily: 'Inter, sans-serif' }}>
+                          {EVENT_EMOJIS[event.type] ?? '🎉'} {event.type.replace(/_/g, ' ')}
+                        </span>
+                        <span className='text-xs font-bold px-2.5 py-0.5 rounded-full'
+                          style={{ background: '#f1f5f9', color: '#64748b', fontFamily: 'Inter, sans-serif' }}>
+                          Past
+                        </span>
+                      </div>
+
+                      <h3 className='text-lg font-bold mb-3 line-clamp-1'
+                        style={{ color: '#0f172a', fontFamily: 'Inter, sans-serif' }}>
+                        {event.name}
+                      </h3>
+
+                      <div className='space-y-1.5 mb-4'>
+                        <div className='flex items-center gap-2 text-sm' style={{ color: '#64748b', fontFamily: 'Inter, sans-serif' }}>
+                          <Calendar className='w-3.5 h-3.5 shrink-0' style={{ color: '#94a3b8' }} />
+                          <span>{event.date}</span>
+                          <span style={{ color: '#cbd5e1' }}>·</span>
+                          <Clock className='w-3.5 h-3.5 shrink-0' style={{ color: '#94a3b8' }} />
+                          <span>{event.time}</span>
+                        </div>
+                        {event.venue && event.venue !== 'To be determined' && (
+                          <div className='flex items-center gap-2 text-sm' style={{ color: '#64748b', fontFamily: 'Inter, sans-serif' }}>
+                            <MapPin className='w-3.5 h-3.5 shrink-0' style={{ color: '#94a3b8' }} />
+                            <span className='truncate'>{event.venue}</span>
+                          </div>
+                        )}
+                        {event.guestCount != null && (
+                          <div className='flex items-center gap-2 text-sm' style={{ color: '#64748b', fontFamily: 'Inter, sans-serif' }}>
+                            <Users className='w-3.5 h-3.5 shrink-0' style={{ color: '#94a3b8' }} />
+                            <span>{event.guestCount} guests</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className='pt-3 border-t' style={{ borderColor: '#f1f5f9' }}>
+                        <button
+                          onClick={e => { e.stopPropagation(); onNavigate('event-workspace', event); }}
+                          className='w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-bold transition-all hover:opacity-80'
+                          style={{
+                            background: '#f8fafc',
+                            color: '#64748b',
+                            border: '1px solid #e2e8f0',
+                            fontFamily: 'Inter, sans-serif',
+                          }}
+                        >
+                          <LayoutDashboard className='w-3.5 h-3.5' />
+                          View Details
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
       </main>
     </div>

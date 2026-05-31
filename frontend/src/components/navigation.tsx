@@ -1,4 +1,4 @@
-import { ShoppingCart, User, Home, Calendar, Store, LogOut, Menu, X, BarChart3, Package, ShoppingCart as Orders, LayoutTemplate, Bell, Receipt, CalendarPlus, Boxes, Users } from 'lucide-react';
+import { ShoppingCart, User, Home, Calendar, Store, LogOut, Menu, X, BarChart3, Package, ShoppingCart as Orders, LayoutTemplate, Bell, Receipt, CalendarPlus, Boxes, Users, Wrench } from 'lucide-react';
 import { AppScreen, CartItem, User as UserType } from '@/App';
 import { useEffect, useState } from 'react';
 import { notificationsAPI } from '@/lib/api';
@@ -77,12 +77,13 @@ export function Navigation({ currentScreen, user, cart, onNavigate, onLogout, ad
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   // Screens that belong under each customer nav item (for active highlight)
-  const EVENT_SCREENS: AppScreen[] = ['my-events', 'event-planning', 'event-plan-viewer', 'event-plan', 'event-creation', 'event-templates'];
+  const EVENT_SCREENS: AppScreen[] = ['my-events', 'event-workspace'];
   const PLAN_SCREENS:  AppScreen[] = ['package-picker', 'package-customizer'];
 
   const navItems = user?.role === 'admin'
     ? [
         { icon: BarChart3,      label: 'Overview',      tab: 'overview',       screen: null },
+        { icon: Wrench,         label: 'Operations',    tab: 'operations',     screen: null },
         { icon: Users,          label: 'Customers',     tab: 'customers',      screen: null },
         { icon: Package,        label: 'Products',      tab: 'products',       screen: null },
         { icon: Boxes,          label: 'Packages',      tab: 'packages',       screen: null },

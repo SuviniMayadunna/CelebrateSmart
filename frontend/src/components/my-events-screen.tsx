@@ -1,5 +1,6 @@
+import { useState, useEffect } from 'react';
 import { AppScreen, EventData } from '@/App';
-import { Calendar, Clock, MapPin, Plus, Users } from 'lucide-react';
+import { Calendar, Clock, MapPin, Plus, Users, LayoutDashboard } from 'lucide-react';
 import {
   Empty,
   EmptyContent,
@@ -9,6 +10,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { Button } from '@/components/ui/button';
+import { workspaceAPI } from '@/lib/api';
 
 interface MyEventsScreenProps {
   events: EventData[];
@@ -28,11 +30,39 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export function MyEventsScreen({ events, onNavigate }: MyEventsScreenProps) {
+  const [readinessScores, setReadinessScores] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const paidEvents = events.filter(e => e.hasPaidOrder && e.status !== 'CANCELED');
+    if (paidEvents.length === 0) return;
+
+    Promise.allSettled(
+      paidEvents.map(event =>
+        workspaceAPI.getDashboard(event.id).then(res => ({
+          eventId: event.id,
+          score: res.data.dashboard.readiness.score,
+        }))
+      )
+    ).then(results => {
+      const scores: Record<string, number> = {};
+      results.forEach(result => {
+        if (result.status === 'fulfilled') {
+          scores[result.value.eventId] = result.value.score;
+        }
+      });
+      setReadinessScores(scores);
+    });
+  }, [events]);
+
   // Only show events that have a confirmed payment (paid, preparing, delivered, etc.) or are canceled
   const bookedEvents = events.filter(e => e.hasPaidOrder || e.status === 'CANCELED');
 
   const handleEventClick = (event: EventData) => {
-    onNavigate('event-plan', event);
+    if (event.hasPaidOrder) {
+      onNavigate('event-workspace', event);
+    } else {
+      onNavigate('event-workspace', event);
+    }
   };
 
   return (
@@ -48,7 +78,7 @@ export function MyEventsScreen({ events, onNavigate }: MyEventsScreenProps) {
               </p>
               <h1 className='text-4xl font-black text-foreground'>My Events</h1>
             </div>
-            <Button onClick={() => onNavigate('event-templates')} className='font-bold'>
+            <Button onClick={() => onNavigate('package-picker')} className='font-bold'>
               <Plus className='w-5 h-5' />
               <span>New Event</span>
             </Button>
@@ -65,7 +95,7 @@ export function MyEventsScreen({ events, onNavigate }: MyEventsScreenProps) {
                 <EmptyDescription>Book a package to see your confirmed events here.</EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
-                <Button onClick={() => onNavigate('event-templates')} className='font-bold'>
+                <Button onClick={() => onNavigate('package-picker')} className='font-bold'>
                   <Plus className='w-5 h-5' />
                   <span>Create Your First Event</span>
                 </Button>
@@ -149,33 +179,82 @@ export function MyEventsScreen({ events, onNavigate }: MyEventsScreenProps) {
                         )}
                       </div>
 
-                      {/* Progress bar */}
-                      <div className='pt-3 border-t' style={{ borderColor: 'hsl(150,12%,92%)' }}>
-                        <div className='flex items-center justify-between mb-1.5'>
-                          <span className='text-xs font-semibold uppercase tracking-wide'
-                            style={{ color: 'hsl(150,8%,55%)', fontFamily: 'Inter, sans-serif' }}>
-                            PROGRESS
-                          </span>
-                          <span className='text-xs font-bold'
+                      {isPaid ? (
+                        /* Readiness score */
+                        <div className='pt-3 border-t' style={{ borderColor: 'hsl(150,12%,92%)' }}>
+                          {(() => {
+                            const score = readinessScores[event.id] ?? progressPct;
+                            const scoreColor = score >= 80 ? 'hsl(142,65%,28%)' : score >= 50 ? 'hsl(43,74%,40%)' : 'hsl(155,38%,27%)';
+                            return (
+                              <>
+                                <div className='flex items-center justify-between mb-1.5'>
+                                  <span className='text-xs font-semibold uppercase tracking-wide'
+                                    style={{ color: 'hsl(150,8%,55%)', fontFamily: 'Inter, sans-serif' }}>
+                                    READINESS
+                                  </span>
+                                  <span className='text-xs font-bold' style={{ color: scoreColor, fontFamily: 'Inter, sans-serif' }}>
+                                    {score}%
+                                  </span>
+                                </div>
+                                <div className='h-1.5 rounded-full overflow-hidden' style={{ background: 'hsl(150,12%,90%)' }}>
+                                  <div
+                                    className='h-full rounded-full transition-all duration-500'
+                                    style={{
+                                      width: `${score}%`,
+                                      background: `linear-gradient(90deg, ${accentColor}, hsl(43,60%,62%))`,
+                                    }}
+                                  />
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      ) : (
+                        /* Progress bar */
+                        <div className='pt-3 border-t' style={{ borderColor: 'hsl(150,12%,92%)' }}>
+                          <div className='flex items-center justify-between mb-1.5'>
+                            <span className='text-xs font-semibold uppercase tracking-wide'
+                              style={{ color: 'hsl(150,8%,55%)', fontFamily: 'Inter, sans-serif' }}>
+                              PROGRESS
+                            </span>
+                            <span className='text-xs font-bold'
+                              style={{
+                                color: 'hsl(155,22%,46%)',
+                                fontFamily: 'Inter, sans-serif',
+                              }}>
+                              {totalSteps > 0 ? `${progressPct}%` : 'Planning'}
+                            </span>
+                          </div>
+                          <div className='h-1.5 rounded-full overflow-hidden' style={{ background: 'hsl(150,12%,90%)' }}>
+                            <div
+                              className='h-full rounded-full transition-all duration-500'
+                              style={{
+                                width: `${progressPct}%`,
+                                background: 'linear-gradient(90deg, hsl(155,42%,20%), hsl(155,33%,38%))',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Open Workspace button — paid events only */}
+                      {isPaid && (
+                        <div className='mt-4 pt-3 border-t' style={{ borderColor: 'hsl(150,12%,92%)' }}>
+                          <button
+                            onClick={e => { e.stopPropagation(); onNavigate('event-workspace', event); }}
+                            className='w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-bold transition-all hover:opacity-80'
                             style={{
-                              color: isPaid ? 'hsl(155,38%,27%)' : 'hsl(155,22%,46%)',
+                              background: `linear-gradient(90deg, ${accentColor}18, hsl(43,74%,49%)18)`,
+                              color: accentColor,
+                              border: `1px solid ${accentColor}40`,
                               fontFamily: 'Inter, sans-serif',
-                            }}>
-                            {totalSteps > 0 ? `${progressPct}%` : (isPaid ? 'Active' : 'Planning')}
-                          </span>
-                        </div>
-                        <div className='h-1.5 rounded-full overflow-hidden' style={{ background: 'hsl(150,12%,90%)' }}>
-                          <div
-                            className='h-full rounded-full transition-all duration-500'
-                            style={{
-                              width: `${progressPct}%`,
-                              background: isPaid
-                                ? `linear-gradient(90deg, ${accentColor}, hsl(43,60%,62%))`
-                                : 'linear-gradient(90deg, hsl(155,42%,20%), hsl(155,33%,38%))',
                             }}
-                          />
+                          >
+                            <LayoutDashboard className='w-3.5 h-3.5' />
+                            Open Workspace
+                          </button>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 );

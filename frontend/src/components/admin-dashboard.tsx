@@ -13,9 +13,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Spinner } from '@/components/ui/spinner';
-import { adminAPI, type AdminOrder, type AdminOrderDetail, type AdminProduct, type AdminTemplate, type AdminPackage, type AdminCustomer, type NotificationBroadcast, type PackageTier, type OrderStatus, type ProductCategory, type CreateProductRequest, type UpdateProductRequest, type CreateTemplateRequest, type UpdateTemplateRequest, type PackagePhoto } from '@/lib/api';
+import { adminAPI, adminOperationsAPI, type AdminOperationEvent, type AdminOrder, type AdminOrderDetail, type AdminProduct, type AdminTemplate, type AdminPackage, type AdminCustomer, type NotificationBroadcast, type PackageTier, type OrderStatus, type ProductCategory, type CreateProductRequest, type UpdateProductRequest, type CreateTemplateRequest, type UpdateTemplateRequest, type PackagePhoto } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
-import { BarChart3, Bell, Boxes, LayoutTemplate, Package, RefreshCw, ShoppingCart, TrendingUp, Users, X, Plus, ChevronDown, ChevronRight, Pencil, Eye, Search, Mail, Phone, Calendar, Upload } from 'lucide-react';
+import { BarChart3, Bell, Boxes, LayoutTemplate, Package, RefreshCw, ShoppingCart, TrendingUp, Users, X, Plus, ChevronDown, ChevronRight, Pencil, Eye, Search, Mail, Phone, Calendar, Upload, Wrench, CheckCircle2, Circle, Building2 } from 'lucide-react';
 
 interface AdminDashboardProps {
   user: User | null;
@@ -41,6 +41,7 @@ export function AdminDashboard({ adminTab }: AdminDashboardProps) {
   const [expandedPkg, setExpandedPkg] = useState<string | null>(null);
   const [loading, setLoading] = useState({ stats: false, orders: false, products: false, templates: false, packages: false, customers: false, notification: false, broadcasts: false, productSave: false, templateSave: false, pkgSave: false, orderDetail: false });
   const [broadcasts, setBroadcasts] = useState<NotificationBroadcast[] | null>(null);
+  const [operations, setOperations] = useState<AdminOperationEvent[] | null>(null);
 
   // Search state per tab
   const [productSearch,  setProductSearch]  = useState('');
@@ -354,6 +355,9 @@ export function AdminDashboard({ adminTab }: AdminDashboardProps) {
     if (adminTab === 'packages'       && !packages   && !loading.packages)   void loadPackages();
     if (adminTab === 'customers'      && !customers  && !loading.customers)  void loadCustomers();
     if (adminTab === 'notifications'  && !broadcasts && !loading.broadcasts) void loadBroadcasts();
+    if (adminTab === 'operations'     && !operations) {
+      adminOperationsAPI.list().then(res => setOperations(res.data.events)).catch(() => {});
+    }
   }, [adminTab]); // eslint-disable-line
 
   const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
@@ -1559,6 +1563,142 @@ export function AdminDashboard({ adminTab }: AdminDashboardProps) {
             </div>
           </div>
         )}
+
+        {/* ── Operations ── */}
+        {adminTab === 'operations' && (() => {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          async function toggleStep(_eventId: string, step: { id: string; isCompleted: boolean }) {
+            try {
+              if (step.isCompleted) {
+                await adminOperationsAPI.uncompleteStep(step.id);
+              } else {
+                await adminOperationsAPI.completeStep(step.id);
+              }
+              const res = await adminOperationsAPI.list();
+              setOperations(res.data.events);
+            } catch {
+              toast({ variant: 'destructive', title: 'Failed to update step' });
+            }
+          }
+
+          const ops = operations ?? [];
+          const upcoming = ops.filter(e => new Date(e.date) >= today);
+          const past     = ops.filter(e => new Date(e.date) < today);
+
+          return (
+            <div className='space-y-6'>
+              {sectionHeader('Operations', 'Manage company-side task completion for all events')}
+
+              {operations === null ? (
+                <div className='flex items-center justify-center py-24'><Spinner className='size-6' /></div>
+              ) : ops.length === 0 ? (
+                <div className='flex flex-col items-center justify-center py-20 gap-3'>
+                  <Wrench className='w-10 h-10' style={{ color: '#cbd5e1' }} />
+                  <p className='text-sm' style={{ color: '#64748b' }}>No events with management tasks yet.</p>
+                </div>
+              ) : (
+                <div className='space-y-8'>
+                  {[{ label: 'Upcoming Events', list: upcoming }, { label: 'Past Events', list: past }].map(group => group.list.length > 0 && (
+                    <div key={group.label}>
+                      <h3 className='text-xs font-bold uppercase tracking-widest mb-3' style={{ color: '#64748b' }}>{group.label}</h3>
+                      <div className='space-y-4'>
+                        {group.list.map(event => {
+                          const total = event.managementSteps.length;
+                          const done  = event.managementSteps.filter(s => s.isCompleted).length;
+                          const daysUntil = Math.ceil((new Date(event.date).getTime() - today.getTime()) / 86400000);
+                          return (
+                            <div key={event.id} className='rounded-2xl overflow-hidden'
+                              style={{ background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                              <div className='h-1' style={{ background: done === total ? '#22c55e' : 'hsl(43,74%,49%)' }} />
+                              <div className='p-5'>
+                                <div className='flex items-start justify-between gap-4 mb-4'>
+                                  <div>
+                                    <p className='font-bold text-base' style={{ color: '#0f172a', fontFamily: 'Inter, sans-serif' }}>{event.name}</p>
+                                    <p className='text-xs mt-0.5' style={{ color: '#64748b', fontFamily: 'Inter, sans-serif' }}>
+                                      {event.customer.name} · {event.customer.email}
+                                    </p>
+                                    <p className='text-xs mt-0.5' style={{ color: '#64748b', fontFamily: 'Inter, sans-serif' }}>
+                                      {new Date(event.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                                      {daysUntil > 0 ? ` · ${daysUntil}d away` : daysUntil === 0 ? ' · Today!' : ' · Past'}
+                                    </p>
+                                  </div>
+                                  <div className='text-right shrink-0'>
+                                    <span className='text-xs font-bold px-2.5 py-1 rounded-full'
+                                      style={{
+                                        background: done === total ? 'rgba(34,197,94,0.1)' : 'rgba(251,191,36,0.12)',
+                                        color:      done === total ? '#16a34a' : 'hsl(43,74%,40%)',
+                                        fontFamily: 'Inter, sans-serif',
+                                      }}>
+                                      {done}/{total} done
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* progress bar */}
+                                <div className='h-1.5 rounded-full mb-4' style={{ background: '#f1f5f9' }}>
+                                  <div className='h-full rounded-full transition-all duration-500'
+                                    style={{ width: `${total > 0 ? Math.round(done / total * 100) : 0}%`, background: done === total ? '#22c55e' : 'hsl(43,74%,49%)' }} />
+                                </div>
+
+                                <div className='space-y-2'>
+                                  {event.managementSteps.map(step => {
+                                    const due = step.timeOfDay ? null : new Date(new Date(event.date).getTime() - step.weeksBefore * 7 * 24 * 60 * 60 * 1000);
+                                    return (
+                                      <div key={step.id} className='flex items-start gap-3 py-2 border-b last:border-0' style={{ borderColor: '#f8fafc' }}>
+                                        <button
+                                          onClick={() => toggleStep(event.id, step)}
+                                          className='mt-0.5 shrink-0 hover:scale-110 transition-transform'
+                                          title={step.isCompleted ? 'Mark incomplete' : 'Mark complete'}
+                                        >
+                                          {step.isCompleted
+                                            ? <CheckCircle2 className='w-5 h-5' style={{ color: '#22c55e' }} />
+                                            : <Circle className='w-5 h-5' style={{ color: '#cbd5e1' }} />
+                                          }
+                                        </button>
+                                        <div className='flex-1 min-w-0'>
+                                          <p className={`text-sm font-semibold ${step.isCompleted ? 'line-through' : ''}`}
+                                            style={{ color: step.isCompleted ? '#94a3b8' : '#0f172a', fontFamily: 'Inter, sans-serif' }}>
+                                            {step.title}
+                                          </p>
+                                          {step.description && (
+                                            <p className='text-xs mt-0.5' style={{ color: '#64748b', fontFamily: 'Inter, sans-serif' }}>{step.description}</p>
+                                          )}
+                                          <div className='flex items-center gap-3 mt-1'>
+                                            {due ? (
+                                              <span className='text-xs' style={{ color: '#64748b', fontFamily: 'Inter, sans-serif' }}>
+                                                {step.weeksBefore === 0 ? 'Event day' : `${step.weeksBefore}w before`} · {due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                              </span>
+                                            ) : step.timeOfDay ? (
+                                              <span className='text-xs' style={{ color: 'hsl(43,60%,48%)', fontFamily: 'Inter, sans-serif' }}>
+                                                Event day · {step.timeOfDay}
+                                              </span>
+                                            ) : null}
+                                            {step.isCompleted && step.completedAt && (
+                                              <span className='text-xs' style={{ color: '#22c55e', fontFamily: 'Inter, sans-serif' }}>
+                                                ✓ Completed {new Date(step.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <Building2 className='w-3.5 h-3.5 shrink-0 mt-1' style={{ color: 'hsl(43,60%,55%)' }} />
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </main>
 
       {/* ── Package edit modal ── */}

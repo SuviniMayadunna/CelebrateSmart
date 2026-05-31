@@ -32,6 +32,7 @@ function formatOrder(order: any) {
       categoryName: item.categoryName,
       unitPrice:    Number(item.unitPrice),
       quantity:     item.quantity,
+      imageUrl:     item.product?.imageUrl ?? null,
     })),
   };
 }
@@ -121,7 +122,7 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const orders = await prisma.order.findMany({
       where:   { userId: req.user!.userId, NOT: { status: 'PENDING_PAYMENT' as any } },
-      include: { items: true, event: { select: { name: true, type: true, date: true, time: true, guestCount: true, colorTheme: true } } },
+      include: { items: { include: { product: { select: { imageUrl: true } } } }, event: { select: { name: true, type: true, date: true, time: true, guestCount: true, colorTheme: true } } },
       orderBy: { createdAt: 'desc' },
     });
 

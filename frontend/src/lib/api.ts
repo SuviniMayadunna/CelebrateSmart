@@ -337,6 +337,7 @@ export interface OrderItem {
   categoryName: string;
   unitPrice:    number;
   quantity:     number;
+  imageUrl:     string | null;
 }
 
 export interface Order {
@@ -746,6 +747,230 @@ export const eventPlanAPI = {
   generateReminders: async (eventId: string): Promise<void> => {
     try { await apiRequest(`/events/${eventId}/reminders`, { method: 'POST' }); } catch { /* non-critical */ }
   },
+
+  addCustomStep: (eventId: string, data: { title: string; weeksBefore: number; description?: string }): Promise<{ success: boolean; data: { step: PlanStep } }> =>
+    apiRequest(`/events/${eventId}/plan/steps`, { method: 'POST', body: JSON.stringify(data) }),
+
+  deleteCustomStep: (eventId: string, stepId: string): Promise<{ success: boolean; message: string }> =>
+    apiRequest(`/events/${eventId}/plan/steps/${stepId}`, { method: 'DELETE' }),
+};
+
+// ── Workspace types ──────────────────────────────────────────────────────────
+
+export type PinSection = 'MOOD' | 'DECOR' | 'OUTFIT' | 'LAYOUT' | 'FOOD' | 'ENTERTAINMENT';
+export type GuestStatus = 'INVITED' | 'CONFIRMED' | 'DECLINED' | 'PENDING' | 'ATTENDED' | 'NO_SHOW';
+export type GuestCategory = 'FAMILY' | 'RELATIVES' | 'FRIENDS' | 'COLLEAGUES' | 'VIP' | 'KIDS';
+export type ExpenseCategory = 'VENUE' | 'CATERING' | 'PHOTOGRAPHY' | 'DECORATIONS' | 'ENTERTAINMENT' | 'ATTIRE' | 'INVITATIONS' | 'MISCELLANEOUS';
+export type ExpenseSource = 'MANUAL' | 'ORDER';
+
+export interface VisionPin {
+  id:        string;
+  boardId:   string;
+  section:   PinSection;
+  imageUrl:  string | null;
+  caption:   string | null;
+  notes:     string | null;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface VisionBoard {
+  id:            string;
+  eventId:       string;
+  colorPalette:  string[];
+  styleKeywords: string[];
+  pins:          VisionPin[];
+}
+
+export interface BudgetExpense {
+  id:          string;
+  budgetId:    string;
+  category:    ExpenseCategory;
+  description: string;
+  amount:      number;
+  paidAt:      string | null;
+  receiptNote: string | null;
+  source:      ExpenseSource;
+  orderId:     string | null;
+  createdAt:   string;
+}
+
+export interface EventBudget {
+  id:          string;
+  eventId:     string;
+  totalBudget: number;
+  currency:    string;
+  totalSpent:  number;
+  remaining:   number | null;
+  expenses:    BudgetExpense[];
+}
+
+export interface Guest {
+  id:                  string;
+  guestListId:         string;
+  name:                string;
+  email:               string | null;
+  phone:               string | null;
+  status:              GuestStatus;
+  category:            GuestCategory;
+  tableNumber:         string | null;
+  mealPreference:      string | null;
+  dietaryRestrictions: string | null;
+  plusOnes:            number;
+  notes:               string | null;
+  rsvpToken:           string | null;
+  invitationSentAt:    string | null;
+  rsvpAt:              string | null;
+  createdAt:           string;
+}
+
+export interface GuestStats {
+  total:          number;
+  invited:        number;
+  confirmed:      number;
+  declined:       number;
+  pending:        number;
+  attended:       number;
+  totalAttending: number;
+}
+
+export interface WorkspaceDashboard {
+  event: {
+    id:          string;
+    name:        string;
+    type:        string;
+    date:        string;
+    time:        string;
+    venue:       string;
+    guestCount:  number | null;
+    colorTheme:  string | null;
+    packageName: string | null;
+    daysUntil:   number;
+  };
+  readiness: {
+    score:       number;
+    tasks:       { score: number; done: number;      total: number };
+    vendors:     { score: number; done: number;      total: number };
+    guests:      { score: number; confirmed: number; total: number; target: number };
+    budget:      { score: number; isSet: boolean };
+    visionBoard: { score: number; pinCount: number };
+  };
+  budget: {
+    total:       number;
+    spent:       number;
+    remaining:   number | null;
+    packageCost: number | null;
+  };
+  guests: {
+    total:     number;
+    confirmed: number;
+    declined:  number;
+    pending:   number;
+    invited:   number;
+  };
+  upcomingSteps: { id: string; title: string; weeksBefore: number; dueDate: string }[];
+  visionBoard:   { pinCount: number; colorPalette: string[]; styleKeywords: string[] };
+}
+
+// Workspace API
+export const workspaceAPI = {
+  getDashboard: (eventId: string): Promise<{ success: boolean; data: { dashboard: WorkspaceDashboard } }> =>
+    apiRequest(`/workspace/${eventId}/dashboard`, { method: 'GET' }).then((r: any) => ({ success: r.success, data: { dashboard: r.data } })),
+};
+
+// Vision Board API
+export const visionBoardAPI = {
+  get: (eventId: string): Promise<{ success: boolean; data: { board: VisionBoard } }> =>
+    apiRequest(`/vision-board/${eventId}`, { method: 'GET' }),
+
+  updatePalette: (eventId: string, colorPalette: string[]): Promise<{ success: boolean; data: { board: VisionBoard } }> =>
+    apiRequest(`/vision-board/${eventId}/palette`, { method: 'PUT', body: JSON.stringify({ colorPalette }) }),
+
+  updateKeywords: (eventId: string, styleKeywords: string[]): Promise<{ success: boolean; data: { board: VisionBoard } }> =>
+    apiRequest(`/vision-board/${eventId}/keywords`, { method: 'PUT', body: JSON.stringify({ styleKeywords }) }),
+
+  addPin: (eventId: string, data: { section: PinSection; imageUrl?: string; caption?: string; notes?: string }): Promise<{ success: boolean; data: { pin: VisionPin } }> =>
+    apiRequest(`/vision-board/${eventId}/pins`, { method: 'POST', body: JSON.stringify(data) }),
+
+  updatePin: (eventId: string, pinId: string, data: Partial<Pick<VisionPin, 'caption' | 'notes' | 'imageUrl' | 'section'>>): Promise<{ success: boolean; data: { pin: VisionPin } }> =>
+    apiRequest(`/vision-board/${eventId}/pins/${pinId}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  deletePin: (eventId: string, pinId: string): Promise<{ success: boolean; message: string }> =>
+    apiRequest(`/vision-board/${eventId}/pins/${pinId}`, { method: 'DELETE' }),
+};
+
+// Budget API
+export const budgetAPI = {
+  get: (eventId: string): Promise<{ success: boolean; data: { budget: EventBudget } }> =>
+    apiRequest(`/budget/${eventId}`, { method: 'GET' }),
+
+  setTotal: (eventId: string, totalBudget: number): Promise<{ success: boolean; data: { budget: EventBudget } }> =>
+    apiRequest(`/budget/${eventId}`, { method: 'PUT', body: JSON.stringify({ totalBudget }) }),
+
+  addExpense: (eventId: string, data: { description: string; amount: number; category: ExpenseCategory; paidAt?: string; receiptNote?: string }): Promise<{ success: boolean; data: { expense: BudgetExpense } }> =>
+    apiRequest(`/budget/${eventId}/expenses`, { method: 'POST', body: JSON.stringify(data) }),
+
+  updateExpense: (eventId: string, expenseId: string, data: Partial<{ description: string; amount: number; category: ExpenseCategory; paidAt: string | null; receiptNote: string }>): Promise<{ success: boolean; data: { expense: BudgetExpense } }> =>
+    apiRequest(`/budget/${eventId}/expenses/${expenseId}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  deleteExpense: (eventId: string, expenseId: string): Promise<{ success: boolean; message: string }> =>
+    apiRequest(`/budget/${eventId}/expenses/${expenseId}`, { method: 'DELETE' }),
+};
+
+// Guests API
+export const guestsAPI = {
+  list: (eventId: string): Promise<{ success: boolean; data: { guests: Guest[]; stats: GuestStats; guestListId: string } }> =>
+    apiRequest(`/guests/${eventId}`, { method: 'GET' }),
+
+  add: (eventId: string, data: { name: string; email?: string; phone?: string; category?: GuestCategory; plusOnes?: number; notes?: string; tableNumber?: string; mealPreference?: string; dietaryRestrictions?: string }): Promise<{ success: boolean; data: { guest: Guest } }> =>
+    apiRequest(`/guests/${eventId}`, { method: 'POST', body: JSON.stringify(data) }),
+
+  update: (eventId: string, guestId: string, data: Partial<Omit<Guest, 'id' | 'guestListId' | 'rsvpToken' | 'createdAt'>>): Promise<{ success: boolean; data: { guest: Guest } }> =>
+    apiRequest(`/guests/${eventId}/${guestId}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  remove: (eventId: string, guestId: string): Promise<{ success: boolean; message: string }> =>
+    apiRequest(`/guests/${eventId}/${guestId}`, { method: 'DELETE' }),
+
+  importCSV: (eventId: string, csv: string): Promise<{ success: boolean; data: { imported: number; skipped: number } }> =>
+    apiRequest(`/guests/${eventId}/import`, { method: 'POST', body: JSON.stringify({ csv }) }),
+};
+
+// Public RSVP API (no auth required)
+export const rsvpAPI = {
+  get: (token: string): Promise<{ success: boolean; data: { guestName: string; currentStatus: string; event: { name: string; date: string; venue: string | null; type: string } }; message?: string }> =>
+    apiRequest(`/guests/rsvp/${token}`),
+
+  submit: (token: string, status: 'CONFIRMED' | 'DECLINED'): Promise<{ success: boolean; message: string }> =>
+    apiRequest(`/guests/rsvp/${token}`, { method: 'PUT', body: JSON.stringify({ status }) }),
+};
+
+// Admin Operations API (MANAGEMENT plan steps)
+export interface AdminOperationStep {
+  id:          string;
+  title:       string;
+  description: string | null;
+  weeksBefore: number;
+  timeOfDay:   string | null;
+  isCompleted: boolean;
+  completedAt: string | null;
+}
+
+export interface AdminOperationEvent {
+  id:              string;
+  name:            string;
+  type:            string;
+  date:            string;
+  customer:        { id: string; name: string; email: string };
+  managementSteps: AdminOperationStep[];
+}
+
+export const adminOperationsAPI = {
+  list: (): Promise<{ success: boolean; data: { events: AdminOperationEvent[] } }> =>
+    apiRequest('/admin/operations'),
+  completeStep: (stepId: string): Promise<{ success: boolean; data: { step: AdminOperationStep } }> =>
+    apiRequest(`/admin/operations/steps/${stepId}/complete`, { method: 'POST' }),
+  uncompleteStep: (stepId: string): Promise<{ success: boolean; data: { step: AdminOperationStep } }> =>
+    apiRequest(`/admin/operations/steps/${stepId}/uncomplete`, { method: 'POST' }),
 };
 
 // Notifications API endpoints

@@ -91,6 +91,67 @@ function formatPlan(plan: any) {
   };
 }
 
+const COLOR_THEME_HEX: Record<string, string> = {
+  rose: '#FDA4AF', purple: '#C084FC', blue: '#60A5FA', gold: '#FBBF24',
+  pink: '#F9A8D4', teal: '#2DD4BF', lavender: '#A78BFA', mint: '#86EFAC',
+  coral: '#FCA5A5', amber: '#FCD34D',
+};
+
+const EVENT_TYPE_KEYWORDS: Record<string, string[]> = {
+  WEDDING:     ['Romantic', 'Elegant', 'Timeless'],
+  BIRTHDAY:    ['Festive', 'Fun', 'Vibrant'],
+  PROPOSAL:    ['Intimate', 'Romantic', 'Dreamy'],
+  BABY_SHOWER: ['Soft', 'Pastel', 'Whimsical'],
+  KIDS_PARTY:  ['Colourful', 'Playful', 'Fun'],
+};
+
+const PRODUCT_TO_EXPENSE: Record<string, string> = {
+  CAKES: 'CATERING', FOOD: 'CATERING', DECORATIONS: 'DECORATIONS',
+  VENUE: 'VENUE', PHOTOGRAPHY: 'PHOTOGRAPHY', ENTERTAINMENT: 'ENTERTAINMENT',
+  GIFTS: 'MISCELLANEOUS',
+};
+
+async function bootstrapWorkspace(
+  eventId: string,
+  colorTheme: string | null,
+  eventType: string,
+  orderId: string,
+  orderItems: { productName: string; categoryName: string; unitPrice: any; quantity: number }[],
+) {
+  const [existingBoard, existingBudget, existingList] = await Promise.all([
+    prisma.visionBoard.findUnique({ where: { eventId } }),
+    prisma.eventBudget.findUnique({ where: { eventId } }),
+    prisma.guestList.findUnique({ where: { eventId } }),
+  ]);
+
+  if (!existingBoard) {
+    const palette = colorTheme && COLOR_THEME_HEX[colorTheme] ? [COLOR_THEME_HEX[colorTheme]] : [];
+    const keywords = EVENT_TYPE_KEYWORDS[eventType] ?? [];
+    await prisma.visionBoard.create({ data: { eventId, colorPalette: palette, styleKeywords: keywords } });
+  }
+
+  if (!existingBudget) {
+    const budget = await prisma.eventBudget.create({ data: { eventId, totalBudget: 0 } });
+    if (orderItems.length > 0) {
+      await prisma.budgetExpense.createMany({
+        data: orderItems.map(item => ({
+          budgetId:    budget.id,
+          category:    (PRODUCT_TO_EXPENSE[item.categoryName] ?? 'MISCELLANEOUS') as any,
+          description: item.productName,
+          amount:      Number(item.unitPrice) * item.quantity,
+          paidAt:      new Date(),
+          source:      'ORDER' as any,
+          orderId,
+        })),
+      });
+    }
+  }
+
+  if (!existingList) {
+    await prisma.guestList.create({ data: { eventId } });
+  }
+}
+
 const PLAN_INCLUDE = { steps: { orderBy: { sortOrder: 'asc' as const } } };
 
 const PAID_ORDERS_INCLUDE = {
@@ -403,6 +464,10 @@ router.post(
         });
       }
 
+      // Bootstrap workspace records (idempotent — skip if already exist)
+      await bootstrapWorkspace(event.id, event.colorTheme, event.type, order.id, paidOrder?.items ?? []);
+
+
       const fullEvent = await prisma.event.findUnique({
         where:   { id: event.id },
         include: { tasks: true, plan: { include: PLAN_INCLUDE }, ...PAID_ORDERS_INCLUDE },
@@ -416,11 +481,23 @@ router.post(
   }
 );
 
-// GET /api/events — list events for the authenticated user
+// GET /api/events — list events for the authenticated user (only paid or canceled)
 router.get('/', async (req: Request, res: Response) => {
   try {
     const events = await prisma.event.findMany({
-      where:   { userId: req.user!.userId },
+      where: {
+        userId: req.user!.userId,
+        OR: [
+          {
+            orders: {
+              some: {
+                status: { in: ['PAID','PREPARING','READY_FOR_PICKUP','OUT_FOR_DELIVERY','DELIVERED'] as any[] },
+              },
+            },
+          },
+          { status: 'CANCELED' as any },
+        ],
+      },
       include: {
         tasks: true,
         plan:  { include: { steps: { select: { id: true, isCompleted: true } } } },
@@ -704,6 +781,72 @@ router.patch('/:id/plan/steps/:stepId/uncomplete', async (req: Request, res: Res
     res.json({ success: true, data: { step } });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to update step' });
+  }
+});
+
+// POST /api/events/:id/plan/steps — add a custom user-defined step to the plan
+router.post(
+  '/:id/plan/steps',
+  [
+    param('id').isUUID(),
+    body('title').isString().trim().notEmpty(),
+    body('weeksBefore').isInt({ min: 0 }).withMessage('weeksBefore must be a non-negative integer'),
+    body('description').optional().isString(),
+    body('category').optional().isString(),
+  ],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) { res.status(400).json({ success: false, message: errors.array()[0].msg }); return; }
+    try {
+      const event = await prisma.event.findFirst({ where: { id: req.params.id, userId: req.user!.userId } });
+      if (!event) { res.status(404).json({ success: false, message: 'Event not found' }); return; }
+
+      let plan = await prisma.eventPlan.findUnique({ where: { eventId: event.id } });
+      if (!plan) {
+        plan = await prisma.eventPlan.create({ data: { eventId: event.id } });
+      }
+
+      const maxSort = await prisma.eventPlanStep.aggregate({ where: { planId: plan.id }, _max: { sortOrder: true } });
+      const step = await prisma.eventPlanStep.create({
+        data: {
+          planId:      plan.id,
+          title:       req.body.title,
+          weeksBefore: req.body.weeksBefore,
+          description: req.body.description ?? null,
+          category:    req.body.category    ?? 'CUSTOM',
+          timeOfDay:   null,
+          sortOrder:   (maxSort._max.sortOrder ?? 0) + 1,
+        },
+      });
+      res.status(201).json({ success: true, data: { step } });
+    } catch (err) {
+      console.error('POST /events/:id/plan/steps', err);
+      res.status(500).json({ success: false, message: 'Failed to add step' });
+    }
+  }
+);
+
+// DELETE /api/events/:id/plan/steps/:stepId — delete a custom step
+router.delete('/:id/plan/steps/:stepId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const event = await prisma.event.findFirst({ where: { id: req.params.id, userId: req.user!.userId } });
+    if (!event) { res.status(404).json({ success: false, message: 'Event not found' }); return; }
+
+    const plan = await prisma.eventPlan.findUnique({ where: { eventId: event.id } });
+    if (!plan) { res.status(404).json({ success: false, message: 'Plan not found' }); return; }
+
+    const step = await prisma.eventPlanStep.findFirst({ where: { id: req.params.stepId, planId: plan.id } });
+    if (!step) { res.status(404).json({ success: false, message: 'Step not found' }); return; }
+
+    if (step.category !== 'CUSTOM') {
+      res.status(400).json({ success: false, message: 'Only custom steps can be deleted' }); return;
+    }
+
+    await prisma.eventPlanStep.delete({ where: { id: step.id } });
+    res.json({ success: true, message: 'Step removed' });
+  } catch (err) {
+    console.error('DELETE /events/:id/plan/steps/:stepId', err);
+    res.status(500).json({ success: false, message: 'Failed to delete step' });
   }
 });
 
