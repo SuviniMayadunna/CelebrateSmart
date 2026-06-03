@@ -237,6 +237,62 @@ router.get('/me', authenticate, async (req: Request, res: Response): Promise<voi
   }
 });
 
+// PATCH /api/auth/profile — update name and/or phone
+router.patch('/profile', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, phone } = req.body;
+    if (name !== undefined && typeof name !== 'string') {
+      res.status(400).json({ success: false, message: 'Invalid name' }); return;
+    }
+    const user = await prisma.user.update({
+      where: { id: req.user!.userId },
+      data: {
+        ...(name  !== undefined && { name:  name.trim()  }),
+        ...(phone !== undefined && { phone: phone.trim() }),
+      },
+    });
+    res.json({
+      success: true,
+      data: { user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role.toLowerCase() } },
+    });
+  } catch (err) {
+    console.error('PATCH /auth/profile', err);
+    res.status(500).json({ success: false, message: 'Failed to update profile' });
+  }
+});
+
+// PATCH /api/auth/password — change password (requires current password)
+router.patch(
+  '/password',
+  authenticate,
+  [
+    body('currentPassword').notEmpty().withMessage('Current password is required'),
+    body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters'),
+  ],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ success: false, message: errors.array()[0].msg }); return;
+    }
+    try {
+      const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+      if (!user) { res.status(404).json({ success: false, message: 'User not found' }); return; }
+
+      const isMatch = await comparePassword(req.body.currentPassword, user.password);
+      if (!isMatch) {
+        res.status(400).json({ success: false, message: 'Current password is incorrect' }); return;
+      }
+
+      const newHash = await hashPassword(req.body.newPassword);
+      await prisma.user.update({ where: { id: user.id }, data: { password: newHash } });
+      res.json({ success: true, message: 'Password changed successfully' });
+    } catch (err) {
+      console.error('PATCH /auth/password', err);
+      res.status(500).json({ success: false, message: 'Failed to change password' });
+    }
+  }
+);
+
 router.post('/forgot-password', async (req: Request, res: Response): Promise<void> => {
   try {
     const { email } = req.body;

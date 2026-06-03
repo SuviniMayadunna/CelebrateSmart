@@ -17,6 +17,7 @@ const TASK_ID_TO_CATEGORY: Record<string, TaskCategory> = {
   entertainment: TaskCategory.ENTERTAINMENT,
   photography:   TaskCategory.PHOTOGRAPHY,
   venue:         TaskCategory.VENUE,
+  gifts:         TaskCategory.GIFTS,
 };
 
 const CATEGORY_TO_TASK_ID: Record<string, string> = {
@@ -26,6 +27,7 @@ const CATEGORY_TO_TASK_ID: Record<string, string> = {
   ENTERTAINMENT: 'entertainment',
   PHOTOGRAPHY:   'photography',
   VENUE:         'venue',
+  GIFTS:         'gifts',
 };
 
 const DEFAULT_TASKS: { title: string; category: TaskCategory }[] = [
@@ -92,9 +94,21 @@ function formatPlan(plan: any) {
 }
 
 const COLOR_THEME_HEX: Record<string, string> = {
+  // short legacy keys
   rose: '#FDA4AF', purple: '#C084FC', blue: '#60A5FA', gold: '#FBBF24',
   pink: '#F9A8D4', teal: '#2DD4BF', lavender: '#A78BFA', mint: '#86EFAC',
   coral: '#FCA5A5', amber: '#FCD34D',
+  // full-name keys used by the package-customizer colour picker
+  'Blush Pink':     '#f9a8c0',
+  'Lavender':       '#c4b5fd',
+  'Royal Blue':     '#60a5fa',
+  'Emerald':        '#34d399',
+  'Champagne Gold': '#d4a847',
+  'Coral Peach':    '#fb7185',
+  'Rose Gold':      '#e8a598',
+  'Sage White':     '#86efac',
+  'Midnight Black': '#374151',
+  'Sky Blue':       '#7dd3fc',
 };
 
 const EVENT_TYPE_KEYWORDS: Record<string, string[]> = {

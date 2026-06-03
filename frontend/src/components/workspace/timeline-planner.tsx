@@ -350,10 +350,8 @@ export function TimelinePlanner({ eventId, eventName, eventDate, isPast = false 
                         style={{ borderColor: '#f8fafc' }}>
                         {step.category === 'MANAGEMENT' ? (
                           <div className='mt-0.5 shrink-0' title='Handled by CelebrateSmart team'>
-                            {step.isCompleted
-                              ? <CheckCircle2 className='w-5 h-5' style={{ color: '#22c55e' }} />
-                              : <Building2 className='w-5 h-5' style={{ color: '#cbd5e1' }} />
-                            }
+                            <Building2 className='w-5 h-5'
+                              style={{ color: step.isCompleted ? 'hsl(43,74%,49%)' : '#cbd5e1' }} />
                           </div>
                         ) : (
                           <button
@@ -399,9 +397,16 @@ export function TimelinePlanner({ eventId, eventName, eventDate, isPast = false 
                               </span>
                             ) : null}
                             {step.isCompleted && step.completedAt && (
-                              <span className='text-xs' style={{ color: '#22c55e', fontFamily: 'Inter, sans-serif' }}>
-                                ✓ {new Date(step.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                              </span>
+                              step.category === 'MANAGEMENT' ? (
+                                <span className='text-xs flex items-center gap-1' style={{ color: 'hsl(43,60%,48%)', fontFamily: 'Inter, sans-serif' }}>
+                                  <Building2 className='w-2.5 h-2.5' />
+                                  Team · {new Date(step.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </span>
+                              ) : (
+                                <span className='text-xs' style={{ color: '#22c55e', fontFamily: 'Inter, sans-serif' }}>
+                                  ✓ {new Date(step.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </span>
+                              )
                             )}
                           </div>
                         </div>

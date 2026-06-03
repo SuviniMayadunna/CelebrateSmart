@@ -203,11 +203,16 @@ export interface AdminTemplatesResponse {
   };
 }
 
+export interface TemplateStepInput {
+  category: string;
+  title: string;
+}
+
 export interface CreateTemplateRequest {
   name: string;
   emoji?: string;
   description?: string;
-  steps: string[];
+  steps: TemplateStepInput[];
 }
 
 export interface UpdateTemplateRequest {
@@ -215,7 +220,7 @@ export interface UpdateTemplateRequest {
   emoji?: string | null;
   description?: string;
   isActive?: boolean;
-  steps?: string[];
+  steps?: TemplateStepInput[];
 }
 
 // ── Package types ────────────────────────────────────────────────────────────
@@ -955,12 +960,25 @@ export interface AdminOperationStep {
   completedAt: string | null;
 }
 
+export interface AdminOperationOrderItem {
+  productName:  string;
+  categoryName: string;
+  quantity:     number;
+  unitPrice:    number;
+  venueAddress: string | null;
+}
+
 export interface AdminOperationEvent {
   id:              string;
   name:            string;
   type:            string;
   date:            string;
+  time:            string | null;
+  guestCount:      number | null;
+  colorTheme:      string | null;
+  venue:           string | null;
   customer:        { id: string; name: string; email: string };
+  orderItems:      AdminOperationOrderItem[];
   managementSteps: AdminOperationStep[];
 }
 

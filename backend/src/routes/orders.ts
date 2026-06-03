@@ -22,6 +22,8 @@ function formatOrder(order: any) {
     eventTime:       order.event?.time ?? null,
     eventGuestCount: order.event?.guestCount ?? null,
     eventColorTheme: order.event?.colorTheme ?? null,
+    cancellationFee: order.cancellationFee != null ? Number(order.cancellationFee) : null,
+    refundAmount:    order.refundAmount    != null ? Number(order.refundAmount)    : null,
     createdAt:     order.createdAt instanceof Date
                      ? order.createdAt.toISOString()
                      : String(order.createdAt),

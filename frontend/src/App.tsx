@@ -376,7 +376,7 @@ export default function App() {
         );
       case 'checkout':
         return (
-          <CheckoutScreen cart={cart} event={currentEvent} onNavigate={handleNavigate} onComplete={() => handleCheckoutComplete('')} />
+          <CheckoutScreen cart={cart} event={currentEvent} onNavigate={handleNavigate} onComplete={(orderId) => handleCheckoutComplete(orderId)} />
         );
       case 'my-orders':
         return <MyOrdersScreen onNavigate={handleNavigate} />;

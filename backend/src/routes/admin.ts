@@ -785,26 +785,57 @@ router.get('/operations', async (_req: Request, res: Response): Promise<void> =>
             },
           },
         },
+        orders: {
+          where: { NOT: { status: 'PENDING_PAYMENT' as any } },
+          include: {
+            items: {
+              include: {
+                product: { select: { venueAddress: true } },
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' as const },
+          take: 1,
+        },
       },
       orderBy: { date: 'asc' },
     });
 
-    const formatted = events.map(e => ({
-      id:   e.id,
-      name: e.name,
-      type: e.type,
-      date: e.date instanceof Date ? e.date.toISOString().slice(0, 10) : String(e.date),
-      customer: e.user,
-      managementSteps: (e.plan?.steps ?? []).map(s => ({
-        id:          s.id,
-        title:       s.title,
-        description: s.description,
-        weeksBefore: s.weeksBefore,
-        timeOfDay:   s.timeOfDay,
-        isCompleted: s.isCompleted,
-        completedAt: s.completedAt,
-      })),
-    }));
+    const formatted = events.map(e => {
+      const order = (e as any).orders?.[0] ?? null;
+      const orderItems = (order?.items ?? []).map((i: any) => ({
+        productName:  i.productName,
+        categoryName: i.categoryName,
+        quantity:     i.quantity,
+        unitPrice:    Number(i.unitPrice),
+        venueAddress: i.product?.venueAddress ?? null,
+      }));
+      // Use VENUE product's venueAddress if available, otherwise fall back to event.venue
+      const venueItem  = orderItems.find((i: any) => i.categoryName === 'VENUE' && i.venueAddress);
+      const venueLabel = venueItem?.venueAddress ?? (e as any).venue ?? null;
+
+      return {
+        id:         e.id,
+        name:       e.name,
+        type:       e.type,
+        date:       e.date instanceof Date ? e.date.toISOString().slice(0, 10) : String(e.date),
+        time:       (e as any).time       ?? null,
+        guestCount: (e as any).guestCount ?? null,
+        colorTheme: (e as any).colorTheme ?? null,
+        venue:      venueLabel,
+        customer:   e.user,
+        orderItems,
+        managementSteps: (e.plan?.steps ?? []).map(s => ({
+          id:          s.id,
+          title:       s.title,
+          description: s.description,
+          weeksBefore: s.weeksBefore,
+          timeOfDay:   s.timeOfDay,
+          isCompleted: s.isCompleted,
+          completedAt: s.completedAt,
+        })),
+      };
+    });
 
     res.json({ success: true, data: { events: formatted } });
   } catch {
@@ -817,7 +848,27 @@ router.post('/operations/steps/:stepId/complete', async (req: Request, res: Resp
     const step = await prisma.eventPlanStep.update({
       where: { id: req.params.stepId },
       data:  { isCompleted: true, completedAt: new Date() },
+      include: {
+        plan: {
+          include: {
+            event: {
+              include: { user: { select: { id: true, name: true, email: true } } },
+            },
+          },
+        },
+      },
     });
+
+    // Notify the customer that the team completed this step
+    const user      = step.plan?.event?.user;
+    const eventName = step.plan?.event?.name ?? 'your event';
+    if (user) {
+      const title   = `Task completed: ${step.title}`;
+      const content = `Our team has completed "${step.title}" for ${eventName}. Everything is on track for your big day!`;
+      await prisma.notification.create({ data: { userId: user.id, title, content } }).catch(() => {});
+      await publishNotification({ title, content, emails: [user.email], sentAt: new Date().toISOString() }).catch(() => {});
+    }
+
     res.json({ success: true, data: { step } });
   } catch {
     res.status(500).json({ success: false, error: 'Failed to complete step' });

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AppScreen, CartItem, EventData } from '@/App';
+import { ordersAPI, cartAPI } from '@/lib/api';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,7 +36,7 @@ interface CheckoutScreenProps {
   cart: CartItem[];
   event: EventData | null;
   onNavigate: (screen: AppScreen) => void;
-  onComplete: () => void;
+  onComplete: (orderId: string) => void;
 }
 
 const checkoutSchema = z.object({
@@ -71,12 +72,27 @@ export function CheckoutScreen({ cart, event, onNavigate, onComplete }: Checkout
   const tax = subtotal * 0.1;
   const total = subtotal + tax;
 
-  const submit = async (_values: CheckoutFormValues) => {
+  const submit = async (values: CheckoutFormValues) => {
     setLoading(true);
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setLoading(false);
-    onComplete();
+    try {
+      // Create the order from the current cart
+      const orderRes = await ordersAPI.create(
+        event?.id ?? undefined,
+        values.address?.trim() || undefined,
+      );
+      const orderId = orderRes.data.order.id;
+
+      // Clear the cart from the database now that the order is placed
+      await cartAPI.clear(event?.id ?? undefined).catch(() => {});
+
+      onComplete(orderId);
+    } catch {
+      // Fallback: still clear cart and proceed so the user isn't stuck
+      await cartAPI.clear(event?.id ?? undefined).catch(() => {});
+      onComplete('');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

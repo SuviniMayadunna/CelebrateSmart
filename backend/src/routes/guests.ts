@@ -159,6 +159,54 @@ router.post(
   }
 );
 
+// ── Public RSVP endpoint (no auth required) ───────────────────────────────────
+// IMPORTANT: these must be registered BEFORE /:eventId/:guestId to prevent the
+// parameterised route from shadowing /rsvp/:token (Express matches in order).
+
+// GET /api/guests/rsvp/:token — get event info for RSVP page
+router.get('/rsvp/:token', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const guest = await prisma.guest.findUnique({
+      where: { rsvpToken: req.params.token },
+      include: { guestList: { include: { event: { select: { name: true, date: true, venue: true, type: true } } } } },
+    });
+    if (!guest) { res.status(404).json({ success: false, message: 'RSVP link not found' }); return; }
+    res.json({
+      success: true,
+      data: {
+        guestName: guest.name,
+        currentStatus: guest.status,
+        event: guest.guestList.event,
+      },
+    });
+  } catch (err) {
+    console.error('GET /guests/rsvp/:token', err);
+    res.status(500).json({ success: false, message: 'Failed to load RSVP' });
+  }
+});
+
+// PUT /api/guests/rsvp/:token — guest updates their own status
+router.put(
+  '/rsvp/:token',
+  [body('status').isIn(['CONFIRMED','DECLINED'])],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) { res.status(400).json({ success: false, message: errors.array()[0].msg }); return; }
+    try {
+      const guest = await prisma.guest.findUnique({ where: { rsvpToken: req.params.token } });
+      if (!guest) { res.status(404).json({ success: false, message: 'RSVP link not found' }); return; }
+      await prisma.guest.update({
+        where: { id: guest.id },
+        data: { status: req.body.status, rsvpAt: new Date() },
+      });
+      res.json({ success: true, message: req.body.status === 'CONFIRMED' ? 'You are confirmed!' : 'Response recorded.' });
+    } catch (err) {
+      console.error('PUT /guests/rsvp/:token', err);
+      res.status(500).json({ success: false, message: 'Failed to submit RSVP' });
+    }
+  }
+);
+
 // PUT /api/guests/:eventId/:guestId
 router.put(
   '/:eventId/:guestId',
@@ -210,51 +258,5 @@ router.delete('/:eventId/:guestId', authenticate, [param('eventId').isUUID(), pa
     res.status(500).json({ success: false, message: 'Failed to remove guest' });
   }
 });
-
-// ── Public RSVP endpoint (no auth required) ───────────────────────────────────
-
-// GET /api/guests/rsvp/:token — get event info for RSVP page
-router.get('/rsvp/:token', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const guest = await prisma.guest.findUnique({
-      where: { rsvpToken: req.params.token },
-      include: { guestList: { include: { event: { select: { name: true, date: true, venue: true, type: true } } } } },
-    });
-    if (!guest) { res.status(404).json({ success: false, message: 'RSVP link not found' }); return; }
-    res.json({
-      success: true,
-      data: {
-        guestName: guest.name,
-        currentStatus: guest.status,
-        event: guest.guestList.event,
-      },
-    });
-  } catch (err) {
-    console.error('GET /guests/rsvp/:token', err);
-    res.status(500).json({ success: false, message: 'Failed to load RSVP' });
-  }
-});
-
-// PUT /api/guests/rsvp/:token — guest updates their own status
-router.put(
-  '/rsvp/:token',
-  [body('status').isIn(['CONFIRMED','DECLINED'])],
-  async (req: Request, res: Response): Promise<void> => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) { res.status(400).json({ success: false, message: errors.array()[0].msg }); return; }
-    try {
-      const guest = await prisma.guest.findUnique({ where: { rsvpToken: req.params.token } });
-      if (!guest) { res.status(404).json({ success: false, message: 'RSVP link not found' }); return; }
-      await prisma.guest.update({
-        where: { id: guest.id },
-        data: { status: req.body.status, rsvpAt: new Date() },
-      });
-      res.json({ success: true, message: req.body.status === 'CONFIRMED' ? 'You are confirmed!' : 'Response recorded.' });
-    } catch (err) {
-      console.error('PUT /guests/rsvp/:token', err);
-      res.status(500).json({ success: false, message: 'Failed to submit RSVP' });
-    }
-  }
-);
 
 export default router;

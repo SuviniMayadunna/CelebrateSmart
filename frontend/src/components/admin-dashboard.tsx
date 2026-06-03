@@ -13,9 +13,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Spinner } from '@/components/ui/spinner';
-import { adminAPI, adminOperationsAPI, type AdminOperationEvent, type AdminOrder, type AdminOrderDetail, type AdminProduct, type AdminTemplate, type AdminPackage, type AdminCustomer, type NotificationBroadcast, type PackageTier, type OrderStatus, type ProductCategory, type CreateProductRequest, type UpdateProductRequest, type CreateTemplateRequest, type UpdateTemplateRequest, type PackagePhoto } from '@/lib/api';
+import { adminAPI, adminOperationsAPI, type AdminOperationEvent, type AdminOperationOrderItem, type AdminOrder, type AdminOrderDetail, type AdminProduct, type AdminTemplate, type AdminPackage, type AdminCustomer, type NotificationBroadcast, type PackageTier, type OrderStatus, type ProductCategory, type CreateProductRequest, type UpdateProductRequest, type CreateTemplateRequest, type UpdateTemplateRequest, type TemplateStepInput, type PackagePhoto } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
-import { BarChart3, Bell, Boxes, LayoutTemplate, Package, RefreshCw, ShoppingCart, TrendingUp, Users, X, Plus, ChevronDown, ChevronRight, Pencil, Eye, Search, Mail, Phone, Calendar, Upload, Wrench, CheckCircle2, Circle, Building2 } from 'lucide-react';
+import { BarChart3, Bell, Boxes, LayoutTemplate, Package, RefreshCw, ShoppingCart, TrendingUp, Users, X, Plus, ChevronDown, ChevronRight, Pencil, Eye, Search, Mail, Phone, Calendar, Upload, Wrench, CheckCircle2, Circle, Building2, MapPin } from 'lucide-react';
 
 interface AdminDashboardProps {
   user: User | null;
@@ -42,6 +42,7 @@ export function AdminDashboard({ adminTab }: AdminDashboardProps) {
   const [loading, setLoading] = useState({ stats: false, orders: false, products: false, templates: false, packages: false, customers: false, notification: false, broadcasts: false, productSave: false, templateSave: false, pkgSave: false, orderDetail: false });
   const [broadcasts, setBroadcasts] = useState<NotificationBroadcast[] | null>(null);
   const [operations, setOperations] = useState<AdminOperationEvent[] | null>(null);
+  const [expandedOrderItems, setExpandedOrderItems] = useState<Set<string>>(new Set());
 
   // Search state per tab
   const [productSearch,  setProductSearch]  = useState('');
@@ -177,12 +178,15 @@ export function AdminDashboard({ adminTab }: AdminDashboardProps) {
     }
     setLoading(s => ({ ...s, templateSave: true }));
     try {
+      const stepsToObjects = (cats: string[]): TemplateStepInput[] =>
+        cats.map(cat => ({ category: cat, title: TASK_CATEGORIES.find(c => c.value === cat)?.label ?? cat }));
+
       if (templateModal.open && templateModal.mode === 'create') {
         const payload: CreateTemplateRequest = {
           name: templateForm.name.trim(),
           ...(templateForm.emoji.trim()       && { emoji:       templateForm.emoji.trim() }),
           ...(templateForm.description.trim() && { description: templateForm.description.trim() }),
-          steps: templateForm.steps,
+          steps: stepsToObjects(templateForm.steps),
         };
         const res = await adminAPI.createTemplate(payload);
         setTemplates(prev => [res.data.template, ...(prev ?? [])]);
@@ -192,7 +196,7 @@ export function AdminDashboard({ adminTab }: AdminDashboardProps) {
           name:  templateForm.name.trim()  || undefined,
           emoji: templateForm.emoji.trim() || null,
           ...(templateForm.description.trim() && { description: templateForm.description.trim() }),
-          ...(templateForm.steps.length > 0   && { steps: templateForm.steps }),
+          ...(templateForm.steps.length > 0   && { steps: stepsToObjects(templateForm.steps) }),
         };
         const res = await adminAPI.updateTemplate(templateModal.template.id, payload);
         setTemplates(prev => (prev ?? []).map(t => t.id === res.data.template.id ? res.data.template : t));
@@ -1569,6 +1573,15 @@ export function AdminDashboard({ adminTab }: AdminDashboardProps) {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
 
+          const EVENT_TYPE_LABEL: Record<string, string> = {
+            BIRTHDAY: 'Birthday', WEDDING: 'Wedding', PROPOSAL: 'Proposal',
+            BABY_SHOWER: 'Baby Shower', KIDS_PARTY: "Kids' Party",
+          };
+          const CATEGORY_ICON: Record<string, string> = {
+            CAKES: '🎂', DECORATIONS: '🎊', FOOD: '🍽️', GIFTS: '🎁',
+            PHOTOGRAPHY: '📸', ENTERTAINMENT: '🎵', VENUE: '🏛️',
+          };
+
           async function toggleStep(_eventId: string, step: { id: string; isCompleted: boolean }) {
             try {
               if (step.isCompleted) {
@@ -1581,6 +1594,14 @@ export function AdminDashboard({ adminTab }: AdminDashboardProps) {
             } catch {
               toast({ variant: 'destructive', title: 'Failed to update step' });
             }
+          }
+
+          function toggleOrderItems(eventId: string) {
+            setExpandedOrderItems(prev => {
+              const next = new Set(prev);
+              if (next.has(eventId)) { next.delete(eventId); } else { next.add(eventId); }
+              return next;
+            });
           }
 
           const ops = operations ?? [];
@@ -1608,19 +1629,30 @@ export function AdminDashboard({ adminTab }: AdminDashboardProps) {
                           const total = event.managementSteps.length;
                           const done  = event.managementSteps.filter(s => s.isCompleted).length;
                           const daysUntil = Math.ceil((new Date(event.date).getTime() - today.getTime()) / 86400000);
+                          const itemsExpanded = expandedOrderItems.has(event.id);
+                          const totalOrderValue = event.orderItems.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
                           return (
                             <div key={event.id} className='rounded-2xl overflow-hidden'
                               style={{ background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                               <div className='h-1' style={{ background: done === total ? '#22c55e' : 'hsl(43,74%,49%)' }} />
                               <div className='p-5'>
-                                <div className='flex items-start justify-between gap-4 mb-4'>
-                                  <div>
-                                    <p className='font-bold text-base' style={{ color: '#0f172a', fontFamily: 'Inter, sans-serif' }}>{event.name}</p>
-                                    <p className='text-xs mt-0.5' style={{ color: '#64748b', fontFamily: 'Inter, sans-serif' }}>
+
+                                {/* ── Event header ── */}
+                                <div className='flex items-start justify-between gap-4 mb-3'>
+                                  <div className='flex-1 min-w-0'>
+                                    <div className='flex items-center gap-2 flex-wrap mb-0.5'>
+                                      <p className='font-bold text-base' style={{ color: '#0f172a', fontFamily: 'Inter, sans-serif' }}>{event.name}</p>
+                                      <span className='text-xs font-semibold px-2 py-0.5 rounded-full shrink-0'
+                                        style={{ background: 'hsl(43,74%,96%)', color: 'hsl(43,60%,35%)', border: '1px solid hsl(43,60%,82%)', fontFamily: 'Inter, sans-serif' }}>
+                                        {EVENT_TYPE_LABEL[event.type] ?? event.type}
+                                      </span>
+                                    </div>
+                                    <p className='text-xs' style={{ color: '#64748b', fontFamily: 'Inter, sans-serif' }}>
                                       {event.customer.name} · {event.customer.email}
                                     </p>
                                     <p className='text-xs mt-0.5' style={{ color: '#64748b', fontFamily: 'Inter, sans-serif' }}>
                                       {new Date(event.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                                      {event.time && ` · ${event.time}`}
                                       {daysUntil > 0 ? ` · ${daysUntil}d away` : daysUntil === 0 ? ' · Today!' : ' · Past'}
                                     </p>
                                   </div>
@@ -1636,12 +1668,93 @@ export function AdminDashboard({ adminTab }: AdminDashboardProps) {
                                   </div>
                                 </div>
 
-                                {/* progress bar */}
+                                {/* ── Event details grid ── */}
+                                <div className='grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3 rounded-xl p-3'
+                                  style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                                  {event.guestCount != null && (
+                                    <div className='flex items-center gap-1.5'>
+                                      <Users className='w-3.5 h-3.5 shrink-0' style={{ color: '#64748b' }} />
+                                      <div>
+                                        <p className='text-xs' style={{ color: '#94a3b8', fontFamily: 'Inter, sans-serif' }}>Guests</p>
+                                        <p className='text-xs font-semibold' style={{ color: '#0f172a', fontFamily: 'Inter, sans-serif' }}>{event.guestCount}</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {event.venue && (
+                                    <div className='flex items-center gap-1.5 col-span-2 sm:col-span-1'>
+                                      <MapPin className='w-3.5 h-3.5 shrink-0' style={{ color: '#64748b' }} />
+                                      <div className='min-w-0'>
+                                        <p className='text-xs' style={{ color: '#94a3b8', fontFamily: 'Inter, sans-serif' }}>Venue</p>
+                                        <p className='text-xs font-semibold truncate' style={{ color: '#0f172a', fontFamily: 'Inter, sans-serif' }}>{event.venue}</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {event.colorTheme && (
+                                    <div className='flex items-center gap-1.5'>
+                                      <span className='w-3.5 h-3.5 shrink-0 text-center text-xs leading-none' style={{ color: '#64748b' }}>🎨</span>
+                                      <div>
+                                        <p className='text-xs' style={{ color: '#94a3b8', fontFamily: 'Inter, sans-serif' }}>Theme</p>
+                                        <p className='text-xs font-semibold' style={{ color: '#0f172a', fontFamily: 'Inter, sans-serif' }}>{event.colorTheme}</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* ── Booked items (collapsible) ── */}
+                                {event.orderItems.length > 0 && (
+                                  <div className='mb-3'>
+                                    <button
+                                      type='button'
+                                      onClick={() => toggleOrderItems(event.id)}
+                                      className='w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors'
+                                      style={{
+                                        background: itemsExpanded ? 'hsl(43,74%,96%)' : '#f8fafc',
+                                        color: 'hsl(43,60%,32%)',
+                                        border: '1px solid hsl(43,60%,85%)',
+                                        fontFamily: 'Inter, sans-serif',
+                                      }}>
+                                      <span>📦 {event.orderItems.length} booked item{event.orderItems.length !== 1 ? 's' : ''} · ${totalOrderValue.toLocaleString()}</span>
+                                      {itemsExpanded ? <ChevronDown className='w-3.5 h-3.5' /> : <ChevronRight className='w-3.5 h-3.5' />}
+                                    </button>
+                                    {itemsExpanded && (
+                                      <div className='mt-1 rounded-xl border overflow-hidden' style={{ borderColor: 'hsl(43,60%,85%)' }}>
+                                        {event.orderItems.map((item: AdminOperationOrderItem, idx: number) => (
+                                          <div key={idx}
+                                            className='flex items-center gap-2.5 px-3 py-2 text-xs'
+                                            style={{
+                                              background: idx % 2 === 0 ? 'hsl(43,74%,98%)' : 'white',
+                                              borderBottom: idx < event.orderItems.length - 1 ? '1px solid hsl(43,60%,90%)' : 'none',
+                                              fontFamily: 'Inter, sans-serif',
+                                            }}>
+                                            <span className='text-base w-5 text-center shrink-0'>{CATEGORY_ICON[item.categoryName] ?? '🛍️'}</span>
+                                            <div className='flex-1 min-w-0'>
+                                              <p className='font-semibold truncate' style={{ color: '#0f172a' }}>{item.productName}</p>
+                                              {item.venueAddress && (
+                                                <p className='text-xs mt-0.5 flex items-center gap-1' style={{ color: '#64748b' }}>
+                                                  <MapPin className='w-2.5 h-2.5 shrink-0' />{item.venueAddress}
+                                                </p>
+                                              )}
+                                            </div>
+                                            <div className='text-right shrink-0'>
+                                              <p style={{ color: 'hsl(43,60%,32%)' }}>
+                                                {item.quantity > 1 && <span className='text-gray-400'>×{item.quantity} </span>}
+                                                <span className='font-bold'>${(item.unitPrice * item.quantity).toLocaleString()}</span>
+                                              </p>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* ── Progress bar ── */}
                                 <div className='h-1.5 rounded-full mb-4' style={{ background: '#f1f5f9' }}>
                                   <div className='h-full rounded-full transition-all duration-500'
                                     style={{ width: `${total > 0 ? Math.round(done / total * 100) : 0}%`, background: done === total ? '#22c55e' : 'hsl(43,74%,49%)' }} />
                                 </div>
 
+                                {/* ── Management steps ── */}
                                 <div className='space-y-2'>
                                   {event.managementSteps.map(step => {
                                     const due = step.timeOfDay ? null : new Date(new Date(event.date).getTime() - step.weeksBefore * 7 * 24 * 60 * 60 * 1000);
